@@ -31,6 +31,7 @@ class _HomePageState extends State<HomePage> {
   List<String> generatedReplies = [];
   bool isLoading = false;
   String writingStyle = '';
+  String replyLength = 'Medium';
 
   final TextEditingController messageController = TextEditingController();
 
@@ -53,18 +54,32 @@ class _HomePageState extends State<HomePage> {
 
     switch (selectedTone) {
       case 'Professional':
-        generatedReplies = [
-          'Thank you for your message regarding "$message". I will get back to you shortly.',
-          'I appreciate your message. Let me review it and respond as soon as possible.',
-          'Thank you for reaching out. I will follow up with you shortly.',
-        ];
+        if (replyLength == 'Short') {
+          generatedReplies = [
+            'Thank you. I will get back to you shortly.',
+            'I appreciate your message.',
+            'Thanks for reaching out.',
+          ];
+        } else if (replyLength == 'Medium') {
+          generatedReplies = [
+            'Thank you for your message regarding "$message". I will get back to you shortly.',
+            'I appreciate your message. Let me review it and respond as soon as possible.',
+            'Thank you for reaching out. I will follow up with you shortly.',
+          ];
+        } else {
+          generatedReplies = [
+            'Thank you for your message regarding "$message". I appreciate you reaching out and I will review everything carefully before getting back to you as soon as possible.',
+            'I appreciate your message. Let me take some time to review the details and provide a thoughtful response shortly.',
+            'Thank you for reaching out. I will carefully consider your message and follow up with a detailed response soon.',
+          ];
+        }
         break;
 
       case 'Friendly':
         generatedReplies = [
           writingStyle.isNotEmpty
-        ? 'Based on your style: $writingStyle\n\nReply: Thanks for your message about "$message".'
-        : 'Hey! Thanks for your message about "$message". I will get back to you soon 😊',
+              ? 'Based on your style: $writingStyle\n\nReply: Thanks for your message about "$message".'
+              : 'Hey! Thanks for your message about "$message". I will get back to you soon 😊',
           'Thanks for reaching out! I will reply as soon as I can.',
           'Got your message 😊 Looking forward to chatting more.',
         ];
@@ -119,6 +134,28 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget lengthButton(String title) {
+    final bool isSelected = replyLength == title;
+
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor:
+                isSelected ? Colors.deepPurple : Colors.grey.shade900,
+          ),
+          onPressed: () {
+            setState(() {
+              replyLength = title;
+            });
+          },
+          child: Text(title),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -150,9 +187,7 @@ class _HomePageState extends State<HomePage> {
                   border: OutlineInputBorder(),
                 ),
               ),
-
               const SizedBox(height: 15),
-
               TextField(
                 onChanged: (value) {
                   writingStyle = value;
@@ -164,13 +199,27 @@ class _HomePageState extends State<HomePage> {
                   border: OutlineInputBorder(),
                 ),
               ),
-
               const SizedBox(height: 20),
-
               toneButton('Professional'),
               toneButton('Friendly'),
               toneButton('Funny'),
               toneButton('Romantic'),
+              const SizedBox(height: 20),
+              const Text(
+                'Reply Length',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  lengthButton('Short'),
+                  lengthButton('Medium'),
+                  lengthButton('Long'),
+                ],
+              ),
               const SizedBox(height: 20),
               SizedBox(
                 height: 55,
