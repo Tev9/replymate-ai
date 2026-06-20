@@ -19,7 +19,7 @@ app.get('/', (req, res) => {
 
 app.post('/generate-replies', async (req, res) => {
   try {
-    const { message, tone, length, writingStyle } = req.body;
+    const { message, tone, length, writingStyle, platform } = req.body;
 
     const prompt = `
     You are ReplyMate AI.
@@ -37,6 +37,15 @@ app.post('/generate-replies', async (req, res) => {
 
     User writing style:
     ${writingStyle}
+
+    Platform:
+    ${platform}
+
+    Platform rules:
+    - WhatsApp: casual, conversational, emojis allowed.
+    - SMS: very short and direct.
+    - Email: professional, complete sentences.
+    - LinkedIn: professional networking style.
 
     Rules:
     - Return ONLY valid JSON.

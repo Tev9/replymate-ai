@@ -29,6 +29,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   String selectedTone = 'Professional';
+  String selectedPlatform = 'WhatsApp';
   List<String> generatedReplies = [];
   bool isLoading = false;
   String writingStyle = '';
@@ -57,6 +58,7 @@ class _HomePageState extends State<HomePage> {
       tone: selectedTone,
       length: replyLength,
       writingStyle: writingStyle,
+      platform: selectedPlatform,
     );
     setState(() {
       isLoading = false;
@@ -85,6 +87,28 @@ class _HomePageState extends State<HomePage> {
             title,
             style: const TextStyle(fontSize: 18),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget platformButton(String title) {
+    final bool isSelected = selectedPlatform == title;
+
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor:
+                isSelected ? Colors.deepPurple : Colors.grey.shade900,
+          ),
+          onPressed: () {
+            setState(() {
+              selectedPlatform = title;
+            });
+          },
+          child: Text(title),
         ),
       ),
     );
@@ -160,6 +184,28 @@ class _HomePageState extends State<HomePage> {
               toneButton('Friendly'),
               toneButton('Funny'),
               toneButton('Romantic'),
+              const SizedBox(height: 20),
+              const Text(
+                'Platform',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  platformButton('WhatsApp'),
+                  platformButton('SMS'),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  platformButton('Email'),
+                  platformButton('LinkedIn'),
+                ],
+              ),
               const SizedBox(height: 20),
               const Text(
                 'Reply Length',

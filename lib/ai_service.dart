@@ -7,6 +7,7 @@ class AiService {
     required String tone,
     required String length,
     required String writingStyle,
+    required String platform,
   }) async {
     try {
       final response = await http.post(
@@ -19,6 +20,7 @@ class AiService {
           'tone': tone,
           'length': length,
           'writingStyle': writingStyle,
+          'platform': platform,
         }),
       );
 
