@@ -8,12 +8,29 @@ class AiService {
     required String length,
     required String writingStyle,
   }) async {
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:3001/generate-replies'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'message': message,
+          'tone': tone,
+          'length': length,
+          'writingStyle': writingStyle,
+        }),
+      );
 
-    return [
-      'AI reply 1 for "$message"',
-      'AI reply 2 in $tone tone',
-      'AI reply 3 with $length length',
-    ];
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        return List<String>.from(data['replies']);
+      }
+
+      return ['Failed to generate replies'];
+    } catch (e) {
+      return ['Error: $e'];
+    }
   }
 }
