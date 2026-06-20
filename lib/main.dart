@@ -29,11 +29,11 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String selectedTone = 'Professional';
   List<String> generatedReplies = [];
+  bool isLoading = false;
 
-  final TextEditingController messageController =
-      TextEditingController();
+  final TextEditingController messageController = TextEditingController();
 
-  void generateReply() {
+  Future<void> generateReply() async {
     String message = messageController.text.trim();
 
     if (message.isEmpty) {
@@ -42,6 +42,13 @@ class _HomePageState extends State<HomePage> {
       });
       return;
     }
+
+    setState(() {
+      isLoading = true;
+      generatedReplies = [];
+    });
+
+    await Future.delayed(const Duration(seconds: 2));
 
     switch (selectedTone) {
       case 'Professional':
@@ -77,7 +84,9 @@ class _HomePageState extends State<HomePage> {
         break;
     }
 
-    setState(() {});
+    setState(() {
+      isLoading = false;
+    });
   }
 
   Widget toneButton(String title) {
@@ -121,7 +130,6 @@ class _HomePageState extends State<HomePage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 20),
-
               const Text(
                 'Smart replies for every chat',
                 textAlign: TextAlign.center,
@@ -130,9 +138,7 @@ class _HomePageState extends State<HomePage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
               const SizedBox(height: 30),
-
               TextField(
                 controller: messageController,
                 maxLines: 4,
@@ -141,16 +147,12 @@ class _HomePageState extends State<HomePage> {
                   border: OutlineInputBorder(),
                 ),
               ),
-
               const SizedBox(height: 20),
-
               toneButton('Professional'),
               toneButton('Friendly'),
               toneButton('Funny'),
               toneButton('Romantic'),
-
               const SizedBox(height: 20),
-
               SizedBox(
                 height: 55,
                 child: ElevatedButton(
@@ -161,11 +163,8 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 20),
-
               const Divider(),
-
               Text(
                 'AI Suggestions',
                 style: const TextStyle(
@@ -173,39 +172,61 @@ class _HomePageState extends State<HomePage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
               const SizedBox(height: 10),
-
-              generatedReplies.isEmpty
-            ? const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('AI replies will appear here.'),
-                ),
-              )
-            : Column(
-                children: generatedReplies.map((reply) {
-                  return Card(
-                    child: ListTile(
-                      title: Text(reply),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.copy),
-                        onPressed: () {
-                          Clipboard.setData(
-                            ClipboardData(text: reply),
-                          );
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Reply copied'),
-                            ),
-                          );
-                        },
+              isLoading
+                  ? const Center(
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 12),
+                          Text('Generating AI reply...'),
+                        ],
                       ),
-                    ),
-                  );
-                }).toList(),
-              ),
+                    )
+                  : generatedReplies.isEmpty
+                      ? const Card(
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text('AI replies will appear here.'),
+                          ),
+                        )
+                      : Column(
+                          children:
+                              generatedReplies.asMap().entries.map((entry) {
+                            final index = entry.key + 1;
+                            final reply = entry.value;
+
+                            return Card(
+                              margin: const EdgeInsets.symmetric(vertical: 8),
+                              child: ListTile(
+                                title: Text(
+                                  'Suggestion $index',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Text(reply),
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.copy),
+                                  onPressed: () {
+                                    Clipboard.setData(
+                                      ClipboardData(text: reply),
+                                    );
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Reply copied'),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
             ],
           ),
         ),
