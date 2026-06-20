@@ -30,6 +30,7 @@ class _HomePageState extends State<HomePage> {
   String selectedTone = 'Professional';
   List<String> generatedReplies = [];
   bool isLoading = false;
+  String writingStyle = '';
 
   final TextEditingController messageController = TextEditingController();
 
@@ -61,7 +62,9 @@ class _HomePageState extends State<HomePage> {
 
       case 'Friendly':
         generatedReplies = [
-          'Hey! Thanks for your message about "$message". I will get back to you soon 😊',
+          writingStyle.isNotEmpty
+        ? 'Based on your style: $writingStyle\n\nReply: Thanks for your message about "$message".'
+        : 'Hey! Thanks for your message about "$message". I will get back to you soon 😊',
           'Thanks for reaching out! I will reply as soon as I can.',
           'Got your message 😊 Looking forward to chatting more.',
         ];
@@ -147,7 +150,23 @@ class _HomePageState extends State<HomePage> {
                   border: OutlineInputBorder(),
                 ),
               ),
+
+              const SizedBox(height: 15),
+
+              TextField(
+                onChanged: (value) {
+                  writingStyle = value;
+                },
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText:
+                      'Optional: Paste examples of how you normally write...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+
               const SizedBox(height: 20),
+
               toneButton('Professional'),
               toneButton('Friendly'),
               toneButton('Funny'),
