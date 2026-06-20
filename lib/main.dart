@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'ai_service.dart';
 
 void main() {
   runApp(const ReplyMateApp());
@@ -34,6 +35,7 @@ class _HomePageState extends State<HomePage> {
   String replyLength = 'Medium';
 
   final TextEditingController messageController = TextEditingController();
+  final AiService aiService = AiService();
 
   Future<void> generateReply() async {
     String message = messageController.text.trim();
@@ -50,58 +52,12 @@ class _HomePageState extends State<HomePage> {
       generatedReplies = [];
     });
 
-    await Future.delayed(const Duration(seconds: 2));
-
-    switch (selectedTone) {
-      case 'Professional':
-        if (replyLength == 'Short') {
-          generatedReplies = [
-            'Thank you. I will get back to you shortly.',
-            'I appreciate your message.',
-            'Thanks for reaching out.',
-          ];
-        } else if (replyLength == 'Medium') {
-          generatedReplies = [
-            'Thank you for your message regarding "$message". I will get back to you shortly.',
-            'I appreciate your message. Let me review it and respond as soon as possible.',
-            'Thank you for reaching out. I will follow up with you shortly.',
-          ];
-        } else {
-          generatedReplies = [
-            'Thank you for your message regarding "$message". I appreciate you reaching out and I will review everything carefully before getting back to you as soon as possible.',
-            'I appreciate your message. Let me take some time to review the details and provide a thoughtful response shortly.',
-            'Thank you for reaching out. I will carefully consider your message and follow up with a detailed response soon.',
-          ];
-        }
-        break;
-
-      case 'Friendly':
-        generatedReplies = [
-          writingStyle.isNotEmpty
-              ? 'Based on your style: $writingStyle\n\nReply: Thanks for your message about "$message".'
-              : 'Hey! Thanks for your message about "$message". I will get back to you soon 😊',
-          'Thanks for reaching out! I will reply as soon as I can.',
-          'Got your message 😊 Looking forward to chatting more.',
-        ];
-        break;
-
-      case 'Funny':
-        generatedReplies = [
-          'Haha, got your message about "$message". Let me work my magic 😄',
-          'Message received! My brain is now processing at full speed 🚀',
-          'Hold tight, a legendary reply is loading 😎',
-        ];
-        break;
-
-      case 'Romantic':
-        generatedReplies = [
-          'Seeing your message about "$message" made me smile ❤️',
-          'Your message brightened my day more than you know 💕',
-          'I always enjoy hearing from you ❤️',
-        ];
-        break;
-    }
-
+    generatedReplies = await aiService.generateReplies(
+      message: message,
+      tone: selectedTone,
+      length: replyLength,
+      writingStyle: writingStyle,
+    );
     setState(() {
       isLoading = false;
     });
