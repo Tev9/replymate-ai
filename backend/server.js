@@ -22,20 +22,35 @@ app.post('/generate-replies', async (req, res) => {
     const { message, tone, length, writingStyle } = req.body;
 
     const prompt = `
-Message:
-${message}
+    You are ReplyMate AI.
 
-Tone:
-${tone}
+    Generate exactly 3 different reply suggestions.
 
-Reply Length:
-${length}
+    Message to reply to:
+    ${message}
 
-Writing Style:
-${writingStyle}
+    Tone:
+    ${tone}
 
-Generate 3 different reply suggestions.
-`;
+    Reply length:
+    ${length}
+
+    User writing style:
+    ${writingStyle}
+
+    Rules:
+    - Return ONLY valid JSON.
+    - Do not include markdown.
+    - Do not include numbering.
+    - Use this exact format:
+    {
+      "replies": [
+        "reply one",
+        "reply two",
+        "reply three"
+      ]
+    }
+    `;
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4.1-mini',
@@ -48,10 +63,12 @@ Generate 3 different reply suggestions.
       temperature: 0.8,
     });
 
-    const reply = response.choices[0].message.content;
+    const content = response.choices[0].message.content;
+
+    const parsed = JSON.parse(content);
 
     res.json({
-      replies: [reply],
+      replies: parsed.replies,
     });
   } catch (error) {
     console.error(error);
