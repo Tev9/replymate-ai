@@ -65,6 +65,65 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<void> rewriteReply(int index, String instruction) async {
+    final oldReply = generatedReplies[index];
+
+    setState(() {
+      generatedReplies[index] = 'Rewriting...';
+    });
+
+    final newReply = await aiService.rewriteReply(
+      reply: oldReply,
+      instruction: instruction,
+      platform: selectedPlatform,
+      writingStyle: writingStyle,
+    );
+
+    setState(() {
+      generatedReplies[index] = newReply;
+    });
+  }
+
+  Future<void> showCustomRewriteDialog(int index) async {
+    final TextEditingController customController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Custom Rewrite'),
+          content: TextField(
+            controller: customController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'Example: Make it warmer and shorter',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final instruction = customController.text.trim();
+
+                if (instruction.isNotEmpty) {
+                  Navigator.pop(context);
+                  rewriteReply(index, instruction);
+                }
+              },
+              child: const Text('Rewrite'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget toneButton(String title) {
     final bool isSelected = selectedTone == title;
 
@@ -279,19 +338,51 @@ class _HomePageState extends State<HomePage> {
                                   padding: const EdgeInsets.only(top: 8),
                                   child: Text(reply),
                                 ),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.copy),
-                                  onPressed: () {
-                                    Clipboard.setData(
-                                      ClipboardData(text: reply),
-                                    );
+                                trailing: PopupMenuButton<String>(
+                                  onSelected: (value) {
+                                    if (value == 'copy') {
+                                      Clipboard.setData(
+                                        ClipboardData(text: reply),
+                                      );
 
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Reply copied'),
-                                      ),
-                                    );
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Reply copied'),
+                                        ),
+                                      );
+                                    } else if (value == 'custom') {
+                                      showCustomRewriteDialog(index - 1);
+                                    } else {
+                                      rewriteReply(index - 1, value);
+                                    }
                                   },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: 'copy',
+                                      child: Text('Copy'),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'Make it shorter',
+                                      child: Text('Shorter'),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'Make it longer',
+                                      child: Text('Longer'),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'Make it funnier',
+                                      child: Text('Funny'),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'Make it more professional',
+                                      child: Text('Professional'),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'custom',
+                                      child: Text('Custom Rewrite'),
+                                    ),
+                                  ],
                                 ),
                               ),
                             );

@@ -35,4 +35,35 @@ class AiService {
       return ['Error: $e'];
     }
   }
+
+  Future<String> rewriteReply({
+    required String reply,
+    required String instruction,
+    required String platform,
+    required String writingStyle,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:3001/rewrite-reply'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'reply': reply,
+          'instruction': instruction,
+          'platform': platform,
+          'writingStyle': writingStyle,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['reply'];
+      }
+
+      return 'Failed to rewrite reply';
+    } catch (e) {
+      return 'Error: $e';
+    }
+  }
 }

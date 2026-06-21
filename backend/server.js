@@ -90,6 +90,61 @@ app.post('/generate-replies', async (req, res) => {
   }
 });
 
+app.post('/rewrite-reply', async (req, res) => {
+  try {
+    const { reply, instruction, platform, writingStyle } = req.body;
+
+    const prompt = `
+You are ReplyMate AI.
+
+Rewrite this reply:
+
+${reply}
+
+Instruction:
+${instruction}
+
+Platform:
+${platform}
+
+User writing style:
+${writingStyle}
+
+Rules:
+- Return ONLY valid JSON.
+- Do not include markdown.
+- Use this exact format:
+{
+  "reply": "rewritten reply here"
+}
+`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4.1-mini',
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.8,
+    });
+
+    const content = response.choices[0].message.content;
+    const parsed = JSON.parse(content);
+
+    res.json({
+      reply: parsed.reply,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: 'Failed to rewrite reply',
+    });
+  }
+});
+
 const PORT = 3001;
 
 app.listen(PORT, () => {
