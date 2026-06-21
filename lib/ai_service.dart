@@ -66,4 +66,36 @@ class AiService {
       return 'Error: $e';
     }
   }
+
+  Future<Map<String, dynamic>> analyzeConversation({
+    required String message,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:3001/analyze-conversation'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'message': message,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+
+      return {
+        'type': 'Unknown',
+        'mood': 'Unknown',
+        'advice': 'No advice available',
+      };
+    } catch (e) {
+      return {
+        'type': 'Error',
+        'mood': 'Error',
+        'advice': e.toString(),
+      };
+    }
+  }
 }

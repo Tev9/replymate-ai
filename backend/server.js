@@ -145,6 +145,56 @@ Rules:
   }
 });
 
+app.post('/analyze-conversation', async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    const prompt = `
+You are ReplyMate AI.
+
+Analyze this message or conversation:
+
+${message}
+
+Return ONLY valid JSON.
+Do not include markdown.
+
+Use this exact format:
+{
+  "type": "Conversation type here",
+  "mood": "Detected mood here",
+  "advice": "Short helpful advice here"
+}
+`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4.1-mini',
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.5,
+    });
+
+    const content = response.choices[0].message.content;
+    const parsed = JSON.parse(content);
+
+    res.json({
+      type: parsed.type,
+      mood: parsed.mood,
+      advice: parsed.advice,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: 'Failed to analyze conversation',
+    });
+  }
+});
+
 const PORT = 3001;
 
 app.listen(PORT, () => {

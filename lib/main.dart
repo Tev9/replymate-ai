@@ -34,6 +34,9 @@ class _HomePageState extends State<HomePage> {
   bool isLoading = false;
   String writingStyle = '';
   String replyLength = 'Medium';
+  String conversationType = '';
+  String conversationMood = '';
+  String conversationAdvice = '';
 
   final TextEditingController messageController = TextEditingController();
   final AiService aiService = AiService();
@@ -51,6 +54,20 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       isLoading = true;
       generatedReplies = [];
+
+      conversationType = '';
+      conversationMood = '';
+      conversationAdvice = '';
+    });
+
+    final analysis = await aiService.analyzeConversation(
+      message: message,
+    );
+
+    setState(() {
+      conversationType = analysis['type'];
+      conversationMood = analysis['mood'];
+      conversationAdvice = analysis['advice'];
     });
 
     generatedReplies = await aiService.generateReplies(
@@ -294,6 +311,31 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 20),
               const Divider(),
+              if (conversationType.isNotEmpty)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '🧠 Conversation Analysis',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text('Type: $conversationType'),
+                        const SizedBox(height: 8),
+                        Text('Mood: $conversationMood'),
+                        const SizedBox(height: 8),
+                        Text('Advice: $conversationAdvice'),
+                      ],
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 16),
               Text(
                 'AI Suggestions',
                 style: const TextStyle(
