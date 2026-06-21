@@ -163,7 +163,7 @@ class _HomePageState extends State<HomePage> {
                 controller: messageController,
                 maxLines: 4,
                 decoration: const InputDecoration(
-                  hintText: 'Paste or type a message...',
+                  hintText: 'Paste message or conversation...',
                   border: OutlineInputBorder(),
                 ),
               ),

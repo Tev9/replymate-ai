@@ -26,7 +26,7 @@ app.post('/generate-replies', async (req, res) => {
 
     Generate exactly 3 different reply suggestions.
 
-    Message to reply to:
+    Message or conversation to reply to:
     ${message}
 
     Tone:
@@ -51,7 +51,9 @@ app.post('/generate-replies', async (req, res) => {
     - Return ONLY valid JSON.
     - Do not include markdown.
     - Do not include numbering.
+    - If the input is a conversation, understand the context and reply as "Me".
     - Use this exact format:
+    
     {
       "replies": [
         "reply one",
