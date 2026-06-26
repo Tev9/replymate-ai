@@ -52,14 +52,21 @@ app.post('/generate-replies', async (req, res) => {
     - Do not include markdown.
     - Do not include numbering.
     - If the input is a conversation, understand the context and reply as "Me".
+    - Give each reply a score from 0 to 100.
+    - Higher scores should indicate replies that are more likely to receive a positive response.
+    - bestReply must be the ZERO-BASED index of the best reply.
+    - 0 = first reply, 1 = second reply, 2 = third reply.
     - Use this exact format:
-    
+
     {
       "replies": [
         "reply one",
         "reply two",
         "reply three"
-      ]
+      ],
+      "scores": [95, 88, 79],
+      "bestReply": 0,
+      "reason": "Explain why the first reply is the strongest."
     }
     `;
 
@@ -80,6 +87,9 @@ app.post('/generate-replies', async (req, res) => {
 
     res.json({
       replies: parsed.replies,
+      scores: parsed.scores,
+      bestReply: parsed.bestReply,
+      reason: parsed.reason,
     });
   } catch (error) {
     console.error(error);

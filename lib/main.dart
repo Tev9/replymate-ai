@@ -38,6 +38,11 @@ class _HomePageState extends State<HomePage> {
   String conversationMood = '';
   String conversationAdvice = '';
 
+  int bestReplyIndex = -1;
+  String bestReplyReason = '';
+
+  List<int> replyScores = [];
+
   final TextEditingController messageController = TextEditingController();
   final AiService aiService = AiService();
 
@@ -58,6 +63,11 @@ class _HomePageState extends State<HomePage> {
       conversationType = '';
       conversationMood = '';
       conversationAdvice = '';
+
+      bestReplyIndex = -1;
+      bestReplyReason = '';
+
+      replyScores = [];
     });
 
     final analysis = await aiService.analyzeConversation(
@@ -70,13 +80,20 @@ class _HomePageState extends State<HomePage> {
       conversationAdvice = analysis['advice'];
     });
 
-    generatedReplies = await aiService.generateReplies(
+    final replyData = await aiService.generateReplies(
       message: message,
       tone: selectedTone,
       length: replyLength,
       writingStyle: writingStyle,
       platform: selectedPlatform,
     );
+
+    setState(() {
+      generatedReplies = List<String>.from(replyData['replies']);
+      replyScores = List<int>.from(replyData['scores'] ?? []);
+      bestReplyIndex = replyData['bestReply'] ?? -1;
+      bestReplyReason = replyData['reason'] ?? '';
+    });
     setState(() {
       isLoading = false;
     });
@@ -336,6 +353,36 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               const SizedBox(height: 16),
+              if (bestReplyIndex >= 0)
+                Card(
+                  color: Colors.deepPurple.shade700,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '⭐ AI Recommended Reply',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Suggestion ${bestReplyIndex + 1}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(bestReplyReason),
+                      ],
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 16),
               Text(
                 'AI Suggestions',
                 style: const TextStyle(
@@ -370,11 +417,25 @@ class _HomePageState extends State<HomePage> {
                             return Card(
                               margin: const EdgeInsets.symmetric(vertical: 8),
                               child: ListTile(
-                                title: Text(
-                                  'Suggestion $index',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                title: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Suggestion $index',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    if (replyScores.length >= index)
+                                      Text(
+                                        '⭐ ${replyScores[index - 1]}/100',
+                                        style: const TextStyle(
+                                          color: Colors.amber,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                  ],
                                 ),
                                 subtitle: Padding(
                                   padding: const EdgeInsets.only(top: 8),

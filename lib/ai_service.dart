@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class AiService {
-  Future<List<String>> generateReplies({
+  Future<Map<String, dynamic>> generateReplies({
     required String message,
     required String tone,
     required String length,
@@ -27,12 +27,20 @@ class AiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        return List<String>.from(data['replies']);
+        return data;
       }
 
-      return ['Failed to generate replies'];
+      return {
+        'replies': ['Failed to generate replies'],
+        'bestReply': -1,
+        'reason': '',
+      };
     } catch (e) {
-      return ['Error: $e'];
+      return {
+        'replies': ['Error: $e'],
+        'bestReply': -1,
+        'reason': '',
+      };
     }
   }
 
