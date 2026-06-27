@@ -3,6 +3,8 @@ import '../widgets/analysis_card.dart';
 import '../widgets/recommendation_card.dart';
 import 'package:flutter/services.dart';
 import '../services/ai_service.dart';
+import '../services/memory_service.dart';
+import '../models/conversation_memory.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,13 +24,19 @@ class _HomePageState extends State<HomePage> {
   String conversationMood = '';
   String conversationAdvice = '';
 
+  String memoryStatus = '';
+
   int bestReplyIndex = -1;
   String bestReplyReason = '';
 
   List<int> replyScores = [];
 
   final TextEditingController messageController = TextEditingController();
+  final TextEditingController contactController = TextEditingController();
+  final TextEditingController writingStyleController = TextEditingController();
+
   final AiService aiService = AiService();
+  final MemoryService memoryService = MemoryService();
 
   Future<void> generateReply() async {
     String message = messageController.text.trim();
@@ -79,6 +87,8 @@ class _HomePageState extends State<HomePage> {
       bestReplyReason = replyData['reason'] ?? '';
       isLoading = false;
     });
+
+    await saveContactMemory();
   }
 
   Future<void> rewriteReply(int index, String instruction) async {
@@ -138,6 +148,59 @@ class _HomePageState extends State<HomePage> {
         );
       },
     );
+  }
+
+  Future<void> saveContactMemory() async {
+    final contactName = contactController.text.trim();
+
+    if (contactName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a contact name first'),
+        ),
+      );
+      return;
+    }
+
+    final memory = ConversationMemory(
+      contactName: contactName,
+      writingStyle: writingStyle.isEmpty ? 'Not provided yet' : writingStyle,
+      favoriteWords: [],
+      preferredTone: selectedTone,
+      lastUpdated: DateTime.now(),
+    );
+
+    await memoryService.saveMemory(memory);
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Memory saved for $contactName'),
+      ),
+    );
+  }
+
+  Future<void> loadContactMemory() async {
+    final contactName = contactController.text.trim();
+
+    if (contactName.isEmpty) return;
+
+    final memory = await memoryService.loadMemory(contactName);
+
+    if (memory == null) {
+      setState(() {
+        memoryStatus = 'No previous memory';
+      });
+      return;
+    }
+
+    setState(() {
+      writingStyle = memory.writingStyle;
+      writingStyleController.text = memory.writingStyle;
+      selectedTone = memory.preferredTone;
+      memoryStatus = '🧠 Memory loaded for $contactName';
+    });
   }
 
   Widget toneButton(String title) {
@@ -235,6 +298,19 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 30),
               TextField(
+                controller: contactController,
+                onEditingComplete: () {
+                  loadContactMemory();
+                  FocusScope.of(context).unfocus();
+                },
+                decoration: const InputDecoration(
+                  labelText: 'Contact Name',
+                  hintText: 'e.g. Sarah ❤️',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 15),
+              TextField(
                 controller: messageController,
                 maxLines: 4,
                 decoration: const InputDecoration(
@@ -244,6 +320,7 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 15),
               TextField(
+                controller: writingStyleController,
                 onChanged: (value) {
                   writingStyle = value;
                 },
@@ -309,6 +386,20 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(height: 20),
+              if (memoryStatus.isNotEmpty)
+                Card(
+                  color: Colors.blueGrey.shade900,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      memoryStatus,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
               const Divider(),
               if (conversationType.isNotEmpty)
                 AnalysisCard(
