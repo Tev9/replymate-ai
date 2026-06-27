@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../services/ai_service.dart';
 import '../services/memory_service.dart';
 import '../models/conversation_memory.dart';
+import '../services/style_learning_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -37,6 +38,7 @@ class _HomePageState extends State<HomePage> {
 
   final AiService aiService = AiService();
   final MemoryService memoryService = MemoryService();
+  final StyleLearningService styleLearningService = StyleLearningService();
 
   Future<void> generateReply() async {
     String message = messageController.text.trim();
@@ -87,6 +89,12 @@ class _HomePageState extends State<HomePage> {
       bestReplyReason = replyData['reason'] ?? '';
       isLoading = false;
     });
+
+    writingStyle = styleLearningService.learnWritingStyle(
+      messageController.text,
+    );
+
+    writingStyleController.text = writingStyle;
 
     await saveContactMemory();
   }
