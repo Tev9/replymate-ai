@@ -17,6 +17,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String selectedTone = 'Professional';
   String selectedPlatform = 'WhatsApp';
+  String relationshipType = 'General';
   List<String> generatedReplies = [];
   bool isLoading = false;
   String writingStyle = '';
@@ -80,6 +81,7 @@ class _HomePageState extends State<HomePage> {
       length: replyLength,
       writingStyle: writingStyle,
       platform: selectedPlatform,
+      relationshipType: relationshipType,
     );
 
     setState(() {
@@ -89,14 +91,6 @@ class _HomePageState extends State<HomePage> {
       bestReplyReason = replyData['reason'] ?? '';
       isLoading = false;
     });
-
-    writingStyle = styleLearningService.learnWritingStyle(
-      messageController.text,
-    );
-
-    writingStyleController.text = writingStyle;
-
-    await saveContactMemory();
   }
 
   Future<void> rewriteReply(int index, String instruction) async {
@@ -116,6 +110,8 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       generatedReplies[index] = newReply;
     });
+
+    await learnFromChosenReply(newReply);
   }
 
   Future<void> showCustomRewriteDialog(int index) async {
@@ -159,7 +155,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> saveContactMemory() async {
-    final contactName = contactController.text.trim();
+    final displayName = contactController.text.trim();
+    final contactName = displayName.toLowerCase();
 
     if (contactName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -175,6 +172,7 @@ class _HomePageState extends State<HomePage> {
       writingStyle: writingStyle.isEmpty ? 'Not provided yet' : writingStyle,
       favoriteWords: [],
       preferredTone: selectedTone,
+      relationshipType: relationshipType,
       lastUpdated: DateTime.now(),
     );
 
@@ -184,13 +182,14 @@ class _HomePageState extends State<HomePage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Memory saved for $contactName'),
+        content: Text('Memory saved for $displayName'),
       ),
     );
   }
 
   Future<void> loadContactMemory() async {
-    final contactName = contactController.text.trim();
+    final displayName = contactController.text.trim();
+    final contactName = displayName.toLowerCase();
 
     if (contactName.isEmpty) return;
 
@@ -198,7 +197,8 @@ class _HomePageState extends State<HomePage> {
 
     if (memory == null) {
       setState(() {
-        memoryStatus = 'No previous memory';
+        memoryStatus =
+            '👤 New contact. ReplyMate will start learning your style.';
       });
       return;
     }
@@ -207,8 +207,37 @@ class _HomePageState extends State<HomePage> {
       writingStyle = memory.writingStyle;
       writingStyleController.text = memory.writingStyle;
       selectedTone = memory.preferredTone;
-      memoryStatus = '🧠 Memory loaded for $contactName';
+      relationshipType = memory.relationshipType;
+      memoryStatus = '🧠 Memory loaded for $displayName';
     });
+  }
+
+  Future<void> learnFromChosenReply(String reply) async {
+    final displayName = contactController.text.trim();
+    final contactName = displayName.toLowerCase();
+
+    if (contactName.isEmpty) {
+      return;
+    }
+
+    final learnedStyle = styleLearningService.learnWritingStyle(reply);
+
+    setState(() {
+      writingStyle = learnedStyle;
+      writingStyleController.text = learnedStyle;
+      memoryStatus = '🧠 Learned from your chosen reply';
+    });
+
+    final memory = ConversationMemory(
+      contactName: contactName,
+      writingStyle: learnedStyle,
+      favoriteWords: [],
+      preferredTone: selectedTone,
+      relationshipType: relationshipType,
+      lastUpdated: DateTime.now(),
+    );
+
+    await memoryService.saveMemory(memory);
   }
 
   Widget toneButton(String title) {
@@ -282,6 +311,28 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget relationshipButton(String title) {
+    final bool isSelected = relationshipType == title;
+
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor:
+                isSelected ? Colors.deepPurple : Colors.grey.shade900,
+          ),
+          onPressed: () {
+            setState(() {
+              relationshipType = title;
+            });
+          },
+          child: Text(title),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -344,6 +395,30 @@ class _HomePageState extends State<HomePage> {
               toneButton('Friendly'),
               toneButton('Funny'),
               toneButton('Romantic'),
+              const SizedBox(height: 20),
+              const Text(
+                'Relationship',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  relationshipButton('General'),
+                  relationshipButton('Friend'),
+                  relationshipButton('Family'),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  relationshipButton('Partner'),
+                  relationshipButton('Boss'),
+                  relationshipButton('Client'),
+                ],
+              ),
               const SizedBox(height: 20),
               const Text(
                 'Platform',
@@ -481,16 +556,23 @@ class _HomePageState extends State<HomePage> {
                                   child: Text(reply),
                                 ),
                                 trailing: PopupMenuButton<String>(
-                                  onSelected: (value) {
+                                  onSelected: (value) async {
                                     if (value == 'copy') {
+                                      final messenger =
+                                          ScaffoldMessenger.of(context);
+
                                       Clipboard.setData(
                                         ClipboardData(text: reply),
                                       );
 
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+                                      await learnFromChosenReply(reply);
+
+                                      if (!mounted) return;
+
+                                      messenger.showSnackBar(
                                         const SnackBar(
-                                          content: Text('Reply copied'),
+                                          content:
+                                              Text('Reply copied and learned'),
                                         ),
                                       );
                                     } else if (value == 'custom') {

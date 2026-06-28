@@ -3,6 +3,7 @@ class ConversationMemory {
   final String writingStyle;
   final List<String> favoriteWords;
   final String preferredTone;
+  final String relationshipType;
   final DateTime lastUpdated;
 
   ConversationMemory({
@@ -10,6 +11,7 @@ class ConversationMemory {
     required this.writingStyle,
     required this.favoriteWords,
     required this.preferredTone,
+    required this.relationshipType,
     required this.lastUpdated,
   });
 
@@ -19,6 +21,7 @@ class ConversationMemory {
       'writingStyle': writingStyle,
       'favoriteWords': favoriteWords,
       'preferredTone': preferredTone,
+      'relationshipType': relationshipType,
       'lastUpdated': lastUpdated.toIso8601String(),
     };
   }
@@ -29,6 +32,7 @@ class ConversationMemory {
       writingStyle: json['writingStyle'],
       favoriteWords: List<String>.from(json['favoriteWords']),
       preferredTone: json['preferredTone'],
+      relationshipType: json['relationshipType'] ?? 'General',
       lastUpdated: DateTime.parse(json['lastUpdated']),
     );
   }

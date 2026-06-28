@@ -8,6 +8,7 @@ class AiService {
     required String length,
     required String writingStyle,
     required String platform,
+    required String relationshipType,
   }) async {
     try {
       final response = await http.post(
@@ -21,6 +22,7 @@ class AiService {
           'length': length,
           'writingStyle': writingStyle,
           'platform': platform,
+          'relationshipType': relationshipType,
         }),
       );
 
