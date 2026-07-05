@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import '../widgets/analysis_card.dart';
 import '../widgets/recommendation_card.dart';
+import '../widgets/contact_profile_card.dart';
+import '../widgets/learning_timeline_card.dart';
 import 'package:flutter/services.dart';
 import '../services/ai_service.dart';
 import '../services/memory_service.dart';
 import '../models/conversation_memory.dart';
+import '../models/learning_event.dart';
 import '../services/style_learning_service.dart';
+import '../services/learning_history_service.dart';
+import '../models/learning_history.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -28,6 +33,10 @@ class _HomePageState extends State<HomePage> {
 
   String memoryStatus = '';
 
+  List<LearningHistory> loadedHistory = [];
+
+  ConversationMemory? loadedMemory;
+
   int bestReplyIndex = -1;
   String bestReplyReason = '';
 
@@ -40,6 +49,9 @@ class _HomePageState extends State<HomePage> {
   final AiService aiService = AiService();
   final MemoryService memoryService = MemoryService();
   final StyleLearningService styleLearningService = StyleLearningService();
+
+  final LearningHistoryService learningHistoryService =
+      LearningHistoryService();
 
   Future<void> generateReply() async {
     String message = messageController.text.trim();
@@ -82,6 +94,8 @@ class _HomePageState extends State<HomePage> {
       writingStyle: writingStyle,
       platform: selectedPlatform,
       relationshipType: relationshipType,
+      aiConfidence: loadedMemory?.aiConfidence ?? 0,
+      messagesLearned: loadedMemory?.messagesLearned ?? 0,
     );
 
     setState(() {
@@ -111,7 +125,10 @@ class _HomePageState extends State<HomePage> {
       generatedReplies[index] = newReply;
     });
 
-    await learnFromChosenReply(newReply);
+    await learnFromChosenReply(
+      newReply,
+      LearningEvent.rewrittenReply,
+    );
   }
 
   Future<void> showCustomRewriteDialog(int index) async {
@@ -154,6 +171,58 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  int increaseConfidence({
+    required int currentConfidence,
+    required LearningEvent event,
+  }) {
+    int increase = 0;
+
+    switch (event) {
+      case LearningEvent.newContact:
+        increase = 5;
+        break;
+
+      case LearningEvent.copiedReply:
+        increase = 3;
+        break;
+
+      case LearningEvent.rewrittenReply:
+        increase = 7;
+        break;
+
+      case LearningEvent.manualWritingSample:
+        increase = 10;
+        break;
+
+      case LearningEvent.directSend:
+        increase = 15;
+        break;
+    }
+
+    final newConfidence = currentConfidence + increase;
+
+    if (newConfidence > 100) {
+      return 100;
+    }
+
+    return newConfidence;
+  }
+
+  Future<void> addLearningHistory({
+    required String contactName,
+    required String title,
+    required String description,
+  }) async {
+    await learningHistoryService.addHistory(
+      contactName,
+      LearningHistory(
+        title: title,
+        description: description,
+        timestamp: DateTime.now(),
+      ),
+    );
+  }
+
   Future<void> saveContactMemory() async {
     final displayName = contactController.text.trim();
     final contactName = displayName.toLowerCase();
@@ -167,16 +236,33 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
+    final currentMemory = await memoryService.loadMemory(contactName);
+    final messagesLearned = (currentMemory?.messagesLearned ?? 0) + 1;
+
     final memory = ConversationMemory(
       contactName: contactName,
+      displayName: displayName,
       writingStyle: writingStyle.isEmpty ? 'Not provided yet' : writingStyle,
       favoriteWords: [],
       preferredTone: selectedTone,
       relationshipType: relationshipType,
+      preferredPlatform: selectedPlatform,
+      preferredReplyLength: replyLength,
+      messagesLearned: messagesLearned,
+      aiConfidence: increaseConfidence(
+        currentConfidence: currentMemory?.aiConfidence ?? 0,
+        event: LearningEvent.newContact,
+      ),
       lastUpdated: DateTime.now(),
     );
 
     await memoryService.saveMemory(memory);
+
+    await addLearningHistory(
+      contactName: contactName,
+      title: '👤 Contact Saved',
+      description: 'ReplyMate saved this contact profile and preferences.',
+    );
 
     if (!mounted) return;
 
@@ -194,9 +280,13 @@ class _HomePageState extends State<HomePage> {
     if (contactName.isEmpty) return;
 
     final memory = await memoryService.loadMemory(contactName);
+    final history = await learningHistoryService.loadHistory(contactName);
 
     if (memory == null) {
       setState(() {
+        loadedMemory = null;
+        loadedHistory = [];
+
         memoryStatus =
             '👤 New contact. ReplyMate will start learning your style.';
       });
@@ -204,17 +294,31 @@ class _HomePageState extends State<HomePage> {
     }
 
     setState(() {
+      loadedMemory = memory;
+      loadedHistory = history;
+
       writingStyle = memory.writingStyle;
       writingStyleController.text = memory.writingStyle;
+
       selectedTone = memory.preferredTone;
       relationshipType = memory.relationshipType;
+      selectedPlatform = memory.preferredPlatform;
+      replyLength = memory.preferredReplyLength;
+
       memoryStatus = '🧠 Memory loaded for $displayName';
     });
   }
 
-  Future<void> learnFromChosenReply(String reply) async {
+  Future<void> learnFromChosenReply(
+    String reply,
+    LearningEvent event,
+  ) async {
     final displayName = contactController.text.trim();
     final contactName = displayName.toLowerCase();
+    final currentMemory = await memoryService.loadMemory(contactName);
+    final isFirstLearning =
+        currentMemory == null || currentMemory.messagesLearned == 0;
+    final messagesLearned = (currentMemory?.messagesLearned ?? 0) + 1;
 
     if (contactName.isEmpty) {
       return;
@@ -230,14 +334,40 @@ class _HomePageState extends State<HomePage> {
 
     final memory = ConversationMemory(
       contactName: contactName,
-      writingStyle: learnedStyle,
+      displayName: displayName,
+      writingStyle: writingStyleController.text,
       favoriteWords: [],
       preferredTone: selectedTone,
       relationshipType: relationshipType,
+      preferredPlatform: selectedPlatform,
+      preferredReplyLength: replyLength,
+      messagesLearned: messagesLearned,
+      aiConfidence: increaseConfidence(
+        currentConfidence: currentMemory?.aiConfidence ?? 0,
+        event: event,
+      ),
       lastUpdated: DateTime.now(),
     );
 
     await memoryService.saveMemory(memory);
+
+    if (isFirstLearning) {
+      await addLearningHistory(
+        contactName: contactName,
+        title: '👤 Contact Created',
+        description: 'ReplyMate started learning this contact.',
+      );
+    }
+
+    await addLearningHistory(
+      contactName: contactName,
+      title: event == LearningEvent.copiedReply
+          ? '📋 Reply Copied'
+          : '✏️ Reply Rewritten',
+      description: event == LearningEvent.copiedReply
+          ? 'ReplyMate learned from a copied reply.'
+          : 'ReplyMate learned from a rewritten reply.',
+    );
   }
 
   Widget toneButton(String title) {
@@ -483,6 +613,16 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 ),
+              if (loadedMemory != null) ...[
+                ContactProfileCard(
+                  memory: loadedMemory!,
+                ),
+                const SizedBox(height: 16),
+                LearningTimelineCard(
+                  history: loadedHistory,
+                ),
+              ],
+              const SizedBox(height: 16),
               const Divider(),
               if (conversationType.isNotEmpty)
                 AnalysisCard(
@@ -565,7 +705,10 @@ class _HomePageState extends State<HomePage> {
                                         ClipboardData(text: reply),
                                       );
 
-                                      await learnFromChosenReply(reply);
+                                      await learnFromChosenReply(
+                                        reply,
+                                        LearningEvent.copiedReply,
+                                      );
 
                                       if (!mounted) return;
 

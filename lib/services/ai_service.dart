@@ -9,6 +9,8 @@ class AiService {
     required String writingStyle,
     required String platform,
     required String relationshipType,
+    required int aiConfidence,
+    required int messagesLearned,
   }) async {
     try {
       final response = await http.post(
@@ -23,6 +25,8 @@ class AiService {
           'writingStyle': writingStyle,
           'platform': platform,
           'relationshipType': relationshipType,
+          'aiConfidence': aiConfidence,
+          'messagesLearned': messagesLearned,
         }),
       );
 

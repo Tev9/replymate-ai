@@ -26,6 +26,8 @@ app.post('/generate-replies', async (req, res) => {
       writingStyle,
       platform,
       relationshipType,
+      aiConfidence,
+      messagesLearned,
     } = req.body;
 
     const prompt = `
@@ -50,6 +52,20 @@ app.post('/generate-replies', async (req, res) => {
 
     Relationship:
     ${relationshipType}
+
+    AI Memory:
+
+    Confidence:
+    ${aiConfidence}
+
+    Messages Learned:
+    ${messagesLearned}
+
+    Memory usage rules:
+    - If confidence is below 30, stay neutral and do not strongly imitate the user's style yet.
+    - If confidence is between 30 and 70, gently reflect the user's learned writing style.
+    - If confidence is above 70, closely match the user's learned writing style while staying appropriate.
+    - The more messages learned, the more confidently you may personalize the replies.
 
     Platform rules:
     - WhatsApp: casual, conversational, emojis allowed.
