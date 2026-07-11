@@ -11,6 +11,14 @@ import '../models/learning_event.dart';
 import '../services/style_learning_service.dart';
 import '../services/learning_history_service.dart';
 import '../models/learning_history.dart';
+import '../services/communication_analyzer.dart';
+import '../models/communication_profile.dart';
+import '../services/communication_profile_service.dart';
+import '../widgets/communication_insights_card.dart';
+import '../services/communication_statistics_service.dart';
+import '../services/communication_profile_builder.dart';
+import '../models/communication_statistics.dart';
+import '../widgets/communication_statistics_card.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -36,6 +44,8 @@ class _HomePageState extends State<HomePage> {
   List<LearningHistory> loadedHistory = [];
 
   ConversationMemory? loadedMemory;
+  CommunicationProfile? loadedCommunicationProfile;
+  CommunicationStatistics? loadedCommunicationStatistics;
 
   int bestReplyIndex = -1;
   String bestReplyReason = '';
@@ -49,6 +59,15 @@ class _HomePageState extends State<HomePage> {
   final AiService aiService = AiService();
   final MemoryService memoryService = MemoryService();
   final StyleLearningService styleLearningService = StyleLearningService();
+
+  final CommunicationAnalyzer communicationAnalyzer = CommunicationAnalyzer();
+  final CommunicationProfileService communicationProfileService =
+      CommunicationProfileService();
+  final CommunicationStatisticsService communicationStatisticsService =
+      CommunicationStatisticsService();
+
+  final CommunicationProfileBuilder communicationProfileBuilder =
+      CommunicationProfileBuilder();
 
   final LearningHistoryService learningHistoryService =
       LearningHistoryService();
@@ -96,6 +115,12 @@ class _HomePageState extends State<HomePage> {
       relationshipType: relationshipType,
       aiConfidence: loadedMemory?.aiConfidence ?? 0,
       messagesLearned: loadedMemory?.messagesLearned ?? 0,
+      greeting: loadedCommunicationProfile?.greeting ?? 'Not learned yet',
+      closing: loadedCommunicationProfile?.closing ?? 'Not learned yet',
+      favoriteWords: loadedCommunicationProfile?.favoriteWords ?? [],
+      favoriteEmojis: loadedCommunicationProfile?.favoriteEmojis ?? [],
+      sentenceStyle:
+          loadedCommunicationProfile?.sentenceStyle ?? 'Not learned yet',
     );
 
     setState(() {
@@ -281,11 +306,17 @@ class _HomePageState extends State<HomePage> {
 
     final memory = await memoryService.loadMemory(contactName);
     final history = await learningHistoryService.loadHistory(contactName);
+    final communicationProfile =
+        await communicationProfileService.loadProfile(contactName);
+    final communicationStatistics =
+        await communicationStatisticsService.loadStatistics(contactName);
 
     if (memory == null) {
       setState(() {
         loadedMemory = null;
         loadedHistory = [];
+        loadedCommunicationProfile = null;
+        loadedCommunicationStatistics = null;
 
         memoryStatus =
             '👤 New contact. ReplyMate will start learning your style.';
@@ -296,6 +327,8 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       loadedMemory = memory;
       loadedHistory = history;
+      loadedCommunicationProfile = communicationProfile;
+      loadedCommunicationStatistics = communicationStatistics;
 
       writingStyle = memory.writingStyle;
       writingStyleController.text = memory.writingStyle;
@@ -325,10 +358,35 @@ class _HomePageState extends State<HomePage> {
     }
 
     final learnedStyle = styleLearningService.learnWritingStyle(reply);
+    final communicationProfile = communicationAnalyzer.analyze(reply);
+
+    final updatedStatistics =
+        await communicationStatisticsService.updateStatistics(
+      contactName: contactName,
+      profile: communicationProfile,
+    );
+
+    final cumulativeProfile =
+        communicationProfileBuilder.build(updatedStatistics);
+
+    debugPrint('Greeting: ${communicationProfile.greeting}');
+    debugPrint('Closing: ${communicationProfile.closing}');
+    debugPrint('Favorite Words: ${communicationProfile.favoriteWords}');
+    debugPrint('Favorite Emojis: ${communicationProfile.favoriteEmojis}');
+    debugPrint('Sentence Style: ${communicationProfile.sentenceStyle}');
+
+    await communicationProfileService.saveProfile(
+      contactName,
+      cumulativeProfile,
+    );
 
     setState(() {
       writingStyle = learnedStyle;
       writingStyleController.text = learnedStyle;
+
+      loadedCommunicationProfile = cumulativeProfile;
+      loadedCommunicationStatistics = updatedStatistics;
+
       memoryStatus = '🧠 Learned from your chosen reply';
     });
 
@@ -617,6 +675,18 @@ class _HomePageState extends State<HomePage> {
                 ContactProfileCard(
                   memory: loadedMemory!,
                 ),
+                if (loadedCommunicationProfile != null) ...[
+                  const SizedBox(height: 16),
+                  CommunicationInsightsCard(
+                    profile: loadedCommunicationProfile!,
+                  ),
+                ],
+                if (loadedCommunicationStatistics != null) ...[
+                  const SizedBox(height: 16),
+                  CommunicationStatisticsCard(
+                    statistics: loadedCommunicationStatistics!,
+                  ),
+                ],
                 const SizedBox(height: 16),
                 LearningTimelineCard(
                   history: loadedHistory,

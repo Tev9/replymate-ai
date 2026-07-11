@@ -11,6 +11,12 @@ class AiService {
     required String relationshipType,
     required int aiConfidence,
     required int messagesLearned,
+
+    required String greeting,
+    required String closing,
+    required List<String> favoriteWords,
+    required List<String> favoriteEmojis,
+    required String sentenceStyle,
   }) async {
     try {
       final response = await http.post(
@@ -27,6 +33,11 @@ class AiService {
           'relationshipType': relationshipType,
           'aiConfidence': aiConfidence,
           'messagesLearned': messagesLearned,
+          'greeting': greeting,
+          'closing': closing,
+          'favoriteWords': favoriteWords,
+          'favoriteEmojis': favoriteEmojis,
+          'sentenceStyle': sentenceStyle,
         }),
       );
 
