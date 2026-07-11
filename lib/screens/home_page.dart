@@ -19,6 +19,7 @@ import '../services/communication_statistics_service.dart';
 import '../services/communication_profile_builder.dart';
 import '../models/communication_statistics.dart';
 import '../widgets/communication_statistics_card.dart';
+import '../services/learning_manager.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -69,8 +70,23 @@ class _HomePageState extends State<HomePage> {
   final CommunicationProfileBuilder communicationProfileBuilder =
       CommunicationProfileBuilder();
 
+  late final LearningManager learningManager;
+
   final LearningHistoryService learningHistoryService =
       LearningHistoryService();
+
+  @override
+  void initState() {
+    super.initState();
+
+    learningManager = LearningManager(
+      styleLearningService: styleLearningService,
+      communicationAnalyzer: communicationAnalyzer,
+      communicationStatisticsService: communicationStatisticsService,
+      communicationProfileBuilder: communicationProfileBuilder,
+      communicationProfileService: communicationProfileService,
+    );
+  }
 
   Future<void> generateReply() async {
     String message = messageController.text.trim();
@@ -357,35 +373,18 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    final learnedStyle = styleLearningService.learnWritingStyle(reply);
-    final communicationProfile = communicationAnalyzer.analyze(reply);
-
-    final updatedStatistics =
-        await communicationStatisticsService.updateStatistics(
+    final learningResult = await learningManager.learn(
       contactName: contactName,
-      profile: communicationProfile,
-    );
-
-    final cumulativeProfile =
-        communicationProfileBuilder.build(updatedStatistics);
-
-    debugPrint('Greeting: ${communicationProfile.greeting}');
-    debugPrint('Closing: ${communicationProfile.closing}');
-    debugPrint('Favorite Words: ${communicationProfile.favoriteWords}');
-    debugPrint('Favorite Emojis: ${communicationProfile.favoriteEmojis}');
-    debugPrint('Sentence Style: ${communicationProfile.sentenceStyle}');
-
-    await communicationProfileService.saveProfile(
-      contactName,
-      cumulativeProfile,
+      reply: reply,
+      event: event,
     );
 
     setState(() {
-      writingStyle = learnedStyle;
-      writingStyleController.text = learnedStyle;
+      writingStyle = learningResult.writingStyle;
+      writingStyleController.text = learningResult.writingStyle;
 
-      loadedCommunicationProfile = cumulativeProfile;
-      loadedCommunicationStatistics = updatedStatistics;
+      loadedCommunicationProfile = learningResult.profile;
+      loadedCommunicationStatistics = learningResult.statistics;
 
       memoryStatus = '🧠 Learned from your chosen reply';
     });
