@@ -85,6 +85,8 @@ class _HomePageState extends State<HomePage> {
       communicationStatisticsService: communicationStatisticsService,
       communicationProfileBuilder: communicationProfileBuilder,
       communicationProfileService: communicationProfileService,
+      memoryService: memoryService,
+      learningHistoryService: learningHistoryService,
     );
   }
 
@@ -212,58 +214,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  int increaseConfidence({
-    required int currentConfidence,
-    required LearningEvent event,
-  }) {
-    int increase = 0;
-
-    switch (event) {
-      case LearningEvent.newContact:
-        increase = 5;
-        break;
-
-      case LearningEvent.copiedReply:
-        increase = 3;
-        break;
-
-      case LearningEvent.rewrittenReply:
-        increase = 7;
-        break;
-
-      case LearningEvent.manualWritingSample:
-        increase = 10;
-        break;
-
-      case LearningEvent.directSend:
-        increase = 15;
-        break;
-    }
-
-    final newConfidence = currentConfidence + increase;
-
-    if (newConfidence > 100) {
-      return 100;
-    }
-
-    return newConfidence;
-  }
-
-  Future<void> addLearningHistory({
-    required String contactName,
-    required String title,
-    required String description,
-  }) async {
-    await learningHistoryService.addHistory(
-      contactName,
-      LearningHistory(
-        title: title,
-        description: description,
-        timestamp: DateTime.now(),
-      ),
-    );
-  }
-
   Future<void> saveContactMemory() async {
     final displayName = contactController.text.trim();
     final contactName = displayName.toLowerCase();
@@ -280,26 +230,20 @@ class _HomePageState extends State<HomePage> {
     final currentMemory = await memoryService.loadMemory(contactName);
     final messagesLearned = (currentMemory?.messagesLearned ?? 0) + 1;
 
-    final memory = ConversationMemory(
+    await learningManager.saveMemory(
       contactName: contactName,
       displayName: displayName,
       writingStyle: writingStyle.isEmpty ? 'Not provided yet' : writingStyle,
-      favoriteWords: [],
       preferredTone: selectedTone,
       relationshipType: relationshipType,
       preferredPlatform: selectedPlatform,
       preferredReplyLength: replyLength,
       messagesLearned: messagesLearned,
-      aiConfidence: increaseConfidence(
-        currentConfidence: currentMemory?.aiConfidence ?? 0,
-        event: LearningEvent.newContact,
-      ),
-      lastUpdated: DateTime.now(),
+      currentConfidence: currentMemory?.aiConfidence ?? 0,
+      event: LearningEvent.newContact,
     );
 
-    await memoryService.saveMemory(memory);
-
-    await addLearningHistory(
+    await learningManager.addLearningHistory(
       contactName: contactName,
       title: '👤 Contact Saved',
       description: 'ReplyMate saved this contact profile and preferences.',
@@ -389,34 +333,28 @@ class _HomePageState extends State<HomePage> {
       memoryStatus = '🧠 Learned from your chosen reply';
     });
 
-    final memory = ConversationMemory(
+    await learningManager.saveMemory(
       contactName: contactName,
       displayName: displayName,
       writingStyle: writingStyleController.text,
-      favoriteWords: [],
       preferredTone: selectedTone,
       relationshipType: relationshipType,
       preferredPlatform: selectedPlatform,
       preferredReplyLength: replyLength,
       messagesLearned: messagesLearned,
-      aiConfidence: increaseConfidence(
-        currentConfidence: currentMemory?.aiConfidence ?? 0,
-        event: event,
-      ),
-      lastUpdated: DateTime.now(),
+      currentConfidence: currentMemory?.aiConfidence ?? 0,
+      event: event,
     );
 
-    await memoryService.saveMemory(memory);
-
     if (isFirstLearning) {
-      await addLearningHistory(
+      await learningManager.addLearningHistory(
         contactName: contactName,
         title: '👤 Contact Created',
         description: 'ReplyMate started learning this contact.',
       );
     }
 
-    await addLearningHistory(
+    await learningManager.addLearningHistory(
       contactName: contactName,
       title: event == LearningEvent.copiedReply
           ? '📋 Reply Copied'
