@@ -20,6 +20,7 @@ import '../services/communication_profile_builder.dart';
 import '../models/communication_statistics.dart';
 import '../widgets/communication_statistics_card.dart';
 import '../services/learning_manager.dart';
+import '../services/reply_generation_manager.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -71,6 +72,7 @@ class _HomePageState extends State<HomePage> {
       CommunicationProfileBuilder();
 
   late final LearningManager learningManager;
+  late final ReplyGenerationManager replyGenerationManager;
 
   final LearningHistoryService learningHistoryService =
       LearningHistoryService();
@@ -88,10 +90,13 @@ class _HomePageState extends State<HomePage> {
       memoryService: memoryService,
       learningHistoryService: learningHistoryService,
     );
+    replyGenerationManager = ReplyGenerationManager(
+      aiService: aiService,
+    );
   }
 
   Future<void> generateReply() async {
-    String message = messageController.text.trim();
+    final message = messageController.text.trim();
 
     if (message.isEmpty) {
       setState(() {
@@ -114,17 +119,7 @@ class _HomePageState extends State<HomePage> {
       replyScores = [];
     });
 
-    final analysis = await aiService.analyzeConversation(
-      message: message,
-    );
-
-    setState(() {
-      conversationType = analysis['type'];
-      conversationMood = analysis['mood'];
-      conversationAdvice = analysis['advice'];
-    });
-
-    final replyData = await aiService.generateReplies(
+    final result = await replyGenerationManager.generate(
       message: message,
       tone: selectedTone,
       length: replyLength,
@@ -141,11 +136,18 @@ class _HomePageState extends State<HomePage> {
           loadedCommunicationProfile?.sentenceStyle ?? 'Not learned yet',
     );
 
+    if (!mounted) return;
+
     setState(() {
-      generatedReplies = List<String>.from(replyData['replies']);
-      replyScores = List<int>.from(replyData['scores'] ?? []);
-      bestReplyIndex = replyData['bestReply'] ?? -1;
-      bestReplyReason = replyData['reason'] ?? '';
+      conversationType = result.conversationType;
+      conversationMood = result.conversationMood;
+      conversationAdvice = result.conversationAdvice;
+
+      generatedReplies = result.replies;
+      replyScores = result.scores;
+      bestReplyIndex = result.bestReplyIndex;
+      bestReplyReason = result.bestReplyReason;
+
       isLoading = false;
     });
   }
