@@ -15,11 +15,15 @@ class LearningResult {
   final CommunicationProfile profile;
   final CommunicationStatistics statistics;
   final String writingStyle;
+  final ConversationMemory? memory;
+  final List<LearningHistory> history;
 
   LearningResult({
     required this.profile,
     required this.statistics,
     required this.writingStyle,
+    this.memory,
+    this.history = const [],
   });
 }
 
@@ -118,6 +122,38 @@ class LearningManager {
     await memoryService.saveMemory(memory);
 
     return memory;
+  }
+
+  Future<LearningResult?> loadContact(
+    String contactName,
+  ) async {
+    final memory = await memoryService.loadMemory(contactName);
+
+    if (memory == null) {
+      return null;
+    }
+
+    final history = await learningHistoryService.loadHistory(contactName);
+
+    final profile = await communicationProfileService.loadProfile(contactName);
+
+    final statistics =
+        await communicationStatisticsService.loadStatistics(contactName);
+
+    return LearningResult(
+      profile: profile ??
+          CommunicationProfile(
+            greeting: 'Not learned yet',
+            closing: 'Not learned yet',
+            favoriteWords: [],
+            favoriteEmojis: [],
+            sentenceStyle: 'Not learned yet',
+          ),
+      statistics: statistics,
+      writingStyle: memory.writingStyle,
+      memory: memory,
+      history: history,
+    );
   }
 
   Future<LearningResult> learn({

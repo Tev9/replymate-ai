@@ -264,14 +264,9 @@ class _HomePageState extends State<HomePage> {
 
     if (contactName.isEmpty) return;
 
-    final memory = await memoryService.loadMemory(contactName);
-    final history = await learningHistoryService.loadHistory(contactName);
-    final communicationProfile =
-        await communicationProfileService.loadProfile(contactName);
-    final communicationStatistics =
-        await communicationStatisticsService.loadStatistics(contactName);
+    final result = await learningManager.loadContact(contactName);
 
-    if (memory == null) {
+    if (result == null) {
       setState(() {
         loadedMemory = null;
         loadedHistory = [];
@@ -285,18 +280,18 @@ class _HomePageState extends State<HomePage> {
     }
 
     setState(() {
-      loadedMemory = memory;
-      loadedHistory = history;
-      loadedCommunicationProfile = communicationProfile;
-      loadedCommunicationStatistics = communicationStatistics;
+      loadedMemory = result.memory;
+      loadedHistory = result.history;
+      loadedCommunicationProfile = result.profile;
+      loadedCommunicationStatistics = result.statistics;
 
-      writingStyle = memory.writingStyle;
-      writingStyleController.text = memory.writingStyle;
+      writingStyle = result.writingStyle;
+      writingStyleController.text = result.writingStyle;
 
-      selectedTone = memory.preferredTone;
-      relationshipType = memory.relationshipType;
-      selectedPlatform = memory.preferredPlatform;
-      replyLength = memory.preferredReplyLength;
+      selectedTone = result.memory!.preferredTone;
+      relationshipType = result.memory!.relationshipType;
+      selectedPlatform = result.memory!.preferredPlatform;
+      replyLength = result.memory!.preferredReplyLength;
 
       memoryStatus = '🧠 Memory loaded for $displayName';
     });
