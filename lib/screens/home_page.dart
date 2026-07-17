@@ -303,61 +303,35 @@ class _HomePageState extends State<HomePage> {
   ) async {
     final displayName = contactController.text.trim();
     final contactName = displayName.toLowerCase();
-    final currentMemory = await memoryService.loadMemory(contactName);
-    final isFirstLearning =
-        currentMemory == null || currentMemory.messagesLearned == 0;
-    final messagesLearned = (currentMemory?.messagesLearned ?? 0) + 1;
 
     if (contactName.isEmpty) {
       return;
     }
 
-    final learningResult = await learningManager.learn(
+    final learningResult = await learningManager.learnFromReply(
       contactName: contactName,
+      displayName: displayName,
       reply: reply,
+      preferredTone: selectedTone,
+      relationshipType: relationshipType,
+      preferredPlatform: selectedPlatform,
+      preferredReplyLength: replyLength,
       event: event,
     );
+
+    if (!mounted) return;
 
     setState(() {
       writingStyle = learningResult.writingStyle;
       writingStyleController.text = learningResult.writingStyle;
 
+      loadedMemory = learningResult.memory;
+      loadedHistory = learningResult.history;
       loadedCommunicationProfile = learningResult.profile;
       loadedCommunicationStatistics = learningResult.statistics;
 
       memoryStatus = '🧠 Learned from your chosen reply';
     });
-
-    await learningManager.saveMemory(
-      contactName: contactName,
-      displayName: displayName,
-      writingStyle: writingStyleController.text,
-      preferredTone: selectedTone,
-      relationshipType: relationshipType,
-      preferredPlatform: selectedPlatform,
-      preferredReplyLength: replyLength,
-      messagesLearned: messagesLearned,
-      currentConfidence: currentMemory?.aiConfidence ?? 0,
-      event: event,
-    );
-
-    if (isFirstLearning) {
-      await learningManager.addLearningHistory(
-        contactName: contactName,
-        title: '👤 Contact Created',
-        description: 'ReplyMate started learning this contact.',
-      );
-    }
-
-    await learningManager.addLearningHistory(
-      contactName: contactName,
-      title: event == LearningEvent.copiedReply
-          ? '📋 Reply Copied'
-          : '✏️ Reply Rewritten',
-      description: event == LearningEvent.copiedReply
-          ? 'ReplyMate learned from a copied reply.'
-          : 'ReplyMate learned from a rewritten reply.',
-    );
   }
 
   Widget toneButton(String title) {

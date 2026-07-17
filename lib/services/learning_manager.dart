@@ -185,4 +185,96 @@ class LearningManager {
       writingStyle: writingStyle,
     );
   }
+
+  Future<LearningResult> learnFromReply({
+    required String contactName,
+    required String displayName,
+    required String reply,
+    required String preferredTone,
+    required String relationshipType,
+    required String preferredPlatform,
+    required String preferredReplyLength,
+    required LearningEvent event,
+  }) async {
+    final currentMemory = await memoryService.loadMemory(contactName);
+
+    final isFirstLearning =
+        currentMemory == null || currentMemory.messagesLearned == 0;
+
+    final messagesLearned = (currentMemory?.messagesLearned ?? 0) + 1;
+
+    final learningResult = await learn(
+      contactName: contactName,
+      reply: reply,
+      event: event,
+    );
+
+    final updatedMemory = await saveMemory(
+      contactName: contactName,
+      displayName: displayName,
+      writingStyle: learningResult.writingStyle,
+      preferredTone: preferredTone,
+      relationshipType: relationshipType,
+      preferredPlatform: preferredPlatform,
+      preferredReplyLength: preferredReplyLength,
+      messagesLearned: messagesLearned,
+      currentConfidence: currentMemory?.aiConfidence ?? 0,
+      event: event,
+    );
+
+    if (isFirstLearning) {
+      await addLearningHistory(
+        contactName: contactName,
+        title: '👤 Contact Created',
+        description: 'ReplyMate started learning this contact.',
+      );
+    }
+
+    String historyTitle;
+    String historyDescription;
+
+    switch (event) {
+      case LearningEvent.copiedReply:
+        historyTitle = '📋 Reply Copied';
+        historyDescription = 'ReplyMate learned from a copied reply.';
+        break;
+
+      case LearningEvent.rewrittenReply:
+        historyTitle = '✏️ Reply Rewritten';
+        historyDescription = 'ReplyMate learned from a rewritten reply.';
+        break;
+
+      case LearningEvent.manualWritingSample:
+        historyTitle = '📝 Writing Sample Added';
+        historyDescription = 'ReplyMate learned from a manual writing sample.';
+        break;
+
+      case LearningEvent.directSend:
+        historyTitle = '📤 Reply Sent';
+        historyDescription = 'ReplyMate learned from a directly sent reply.';
+        break;
+
+      case LearningEvent.newContact:
+        historyTitle = '👤 Contact Updated';
+        historyDescription = 'ReplyMate updated this contact profile.';
+        break;
+    }
+
+    await addLearningHistory(
+      contactName: contactName,
+      title: historyTitle,
+      description: historyDescription,
+    );
+
+    final updatedHistory =
+        await learningHistoryService.loadHistory(contactName);
+
+    return LearningResult(
+      profile: learningResult.profile,
+      statistics: learningResult.statistics,
+      writingStyle: learningResult.writingStyle,
+      memory: updatedMemory,
+      history: updatedHistory,
+    );
+  }
 }
