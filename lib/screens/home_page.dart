@@ -21,6 +21,7 @@ import '../models/communication_statistics.dart';
 import '../widgets/communication_statistics_card.dart';
 import '../services/learning_manager.dart';
 import '../services/reply_generation_manager.dart';
+import '../services/reply_rewrite_manager.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -73,6 +74,7 @@ class _HomePageState extends State<HomePage> {
 
   late final LearningManager learningManager;
   late final ReplyGenerationManager replyGenerationManager;
+  late final ReplyRewriteManager replyRewriteManager;
 
   final LearningHistoryService learningHistoryService =
       LearningHistoryService();
@@ -91,6 +93,9 @@ class _HomePageState extends State<HomePage> {
       learningHistoryService: learningHistoryService,
     );
     replyGenerationManager = ReplyGenerationManager(
+      aiService: aiService,
+    );
+    replyRewriteManager = ReplyRewriteManager(
       aiService: aiService,
     );
   }
@@ -159,7 +164,7 @@ class _HomePageState extends State<HomePage> {
       generatedReplies[index] = 'Rewriting...';
     });
 
-    final newReply = await aiService.rewriteReply(
+    final newReply = await replyRewriteManager.rewrite(
       reply: oldReply,
       instruction: instruction,
       platform: selectedPlatform,
