@@ -229,29 +229,22 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    final currentMemory = await memoryService.loadMemory(contactName);
-    final messagesLearned = (currentMemory?.messagesLearned ?? 0) + 1;
-
-    await learningManager.saveMemory(
+    final updatedMemory = await learningManager.saveContact(
       contactName: contactName,
       displayName: displayName,
-      writingStyle: writingStyle.isEmpty ? 'Not provided yet' : writingStyle,
+      writingStyle: writingStyle,
       preferredTone: selectedTone,
       relationshipType: relationshipType,
       preferredPlatform: selectedPlatform,
       preferredReplyLength: replyLength,
-      messagesLearned: messagesLearned,
-      currentConfidence: currentMemory?.aiConfidence ?? 0,
-      event: LearningEvent.newContact,
-    );
-
-    await learningManager.addLearningHistory(
-      contactName: contactName,
-      title: '👤 Contact Saved',
-      description: 'ReplyMate saved this contact profile and preferences.',
     );
 
     if (!mounted) return;
+
+    setState(() {
+      loadedMemory = updatedMemory;
+      memoryStatus = '💾 Contact saved for $displayName';
+    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

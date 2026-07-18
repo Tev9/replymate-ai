@@ -124,6 +124,41 @@ class LearningManager {
     return memory;
   }
 
+  Future<ConversationMemory> saveContact({
+    required String contactName,
+    required String displayName,
+    required String writingStyle,
+    required String preferredTone,
+    required String relationshipType,
+    required String preferredPlatform,
+    required String preferredReplyLength,
+  }) async {
+    final currentMemory = await memoryService.loadMemory(contactName);
+
+    final messagesLearned = (currentMemory?.messagesLearned ?? 0) + 1;
+
+    final updatedMemory = await saveMemory(
+      contactName: contactName,
+      displayName: displayName,
+      writingStyle: writingStyle.isEmpty ? 'Not provided yet' : writingStyle,
+      preferredTone: preferredTone,
+      relationshipType: relationshipType,
+      preferredPlatform: preferredPlatform,
+      preferredReplyLength: preferredReplyLength,
+      messagesLearned: messagesLearned,
+      currentConfidence: currentMemory?.aiConfidence ?? 0,
+      event: LearningEvent.newContact,
+    );
+
+    await addLearningHistory(
+      contactName: contactName,
+      title: '👤 Contact Saved',
+      description: 'ReplyMate saved this contact profile and preferences.',
+    );
+
+    return updatedMemory;
+  }
+
   Future<LearningResult?> loadContact(
     String contactName,
   ) async {
