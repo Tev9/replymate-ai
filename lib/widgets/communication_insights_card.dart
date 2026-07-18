@@ -51,9 +51,52 @@ class CommunicationInsightsCard extends StatelessWidget {
             const SizedBox(height: 8),
 
             Text('📏 Sentence Style: ${profile.sentenceStyle}'),
+
+            const Divider(height: 32),
+
+            const Text(
+              '🧬 Writing DNA',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            Text(
+              '🔤 Average Words per Message: '
+              '${profile.averageWordsPerMessage}',
+            ),
+
+            const SizedBox(height: 8),
+
+            Text(
+              '✨ Emoji Usage: '
+              '${_formatPercentage(profile.emojiUsageRate)}',
+            ),
+
+            const SizedBox(height: 8),
+
+            Text(
+              '❓ Question Rate: '
+              '${_formatPercentage(profile.questionRate)}',
+            ),
+
+            const SizedBox(height: 8),
+
+            Text(
+              '❗ Exclamation Rate: '
+              '${_formatPercentage(profile.exclamationRate)}',
+            ),
           ],
         ),
       ),
     );
+  }
+
+  String _formatPercentage(double value) {
+    final safeValue = value.clamp(0.0, 1.0);
+    return '${(safeValue * 100).round()}%';
   }
 }

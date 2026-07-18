@@ -33,7 +33,22 @@ app.post('/generate-replies', async (req, res) => {
       favoriteWords,
       favoriteEmojis,
       sentenceStyle,
+      averageWordsPerMessage,
+      emojiUsageRate,
+      questionRate,
+      exclamationRate,
     } = req.body;
+
+    const safeAverageWords = Number(averageWordsPerMessage) || 0;
+    const safeEmojiRate = Number(emojiUsageRate) || 0;
+    const safeQuestionRate = Number(questionRate) || 0;
+    const safeExclamationRate = Number(exclamationRate) || 0;
+
+    const emojiPercentage = Math.round(safeEmojiRate * 100);
+    const questionPercentage = Math.round(safeQuestionRate * 100);
+    const exclamationPercentage = Math.round(
+      safeExclamationRate * 100,
+    );
 
     const prompt = `
     You are ReplyMate AI.
@@ -83,6 +98,20 @@ app.post('/generate-replies', async (req, res) => {
     Sentence Style:
     ${sentenceStyle}
 
+    Writing DNA:
+
+    Average Words Per Message:
+    ${safeAverageWords}
+
+    Emoji Usage Rate:
+    ${emojiPercentage}%
+
+    Question Rate:
+    ${questionPercentage}%
+
+    Exclamation Rate:
+    ${exclamationPercentage}%
+
     Memory usage rules:
     - If confidence is below 30, stay neutral and do not strongly imitate the user's style yet.
     - If confidence is between 30 and 70, gently reflect the user's learned writing style.
@@ -97,6 +126,16 @@ app.post('/generate-replies', async (req, res) => {
     - If favorite emojis have been learned, use a similar emoji style when appropriate for the platform and relationship.
     - Match the learned sentence style (Short, Medium, or Long).
     - Do not copy the user's writing exactly; imitate the style naturally.
+
+    Writing DNA Rules:
+
+    - Use the average words per message as a guide for reply length, but still respect the selected reply length.
+    - Match the learned emoji usage rate naturally. Do not force emojis into every reply.
+    - Match the learned question rate. Do not add unnecessary questions.
+    - Match the learned exclamation rate. Avoid excessive exclamation marks when the rate is low.
+    - When Writing DNA values are zero because little information has been learned, rely on the selected tone, relationship, platform, and reply length.
+    - Personalization must always remain appropriate for the conversation.
+    
 
     Platform rules:
     - WhatsApp: casual, conversational, emojis allowed.
@@ -144,6 +183,9 @@ app.post('/generate-replies', async (req, res) => {
         },
       ],
       temperature: 0.8,
+      response_format: {
+        type: 'json_object',
+      },
     });
 
     const content = response.choices[0].message.content;

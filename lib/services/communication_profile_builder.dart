@@ -5,6 +5,9 @@ class CommunicationProfileBuilder {
   CommunicationProfile build(
     CommunicationStatistics statistics,
   ) {
+    final totalMessages =
+        statistics.totalMessages == 0 ? 1 : statistics.totalMessages;
+
     return CommunicationProfile(
       greeting: _mostFrequent(statistics.greetings),
       closing: _mostFrequent(statistics.closings),
@@ -19,6 +22,10 @@ class CommunicationProfileBuilder {
       sentenceStyle: _mostFrequent(
         statistics.sentenceStyles,
       ),
+      averageWordsPerMessage: (statistics.totalWords / totalMessages).round(),
+      emojiUsageRate: statistics.messagesWithEmojis / totalMessages,
+      questionRate: statistics.questionMessages / totalMessages,
+      exclamationRate: statistics.exclamationMessages / totalMessages,
     );
   }
 
@@ -46,9 +53,6 @@ class CommunicationProfileBuilder {
         (a, b) => b.value.compareTo(a.value),
       );
 
-    return sorted
-        .take(limit)
-        .map((e) => e.key)
-        .toList();
+    return sorted.take(limit).map((e) => e.key).toList();
   }
 }

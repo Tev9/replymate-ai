@@ -139,6 +139,11 @@ class _HomePageState extends State<HomePage> {
       favoriteEmojis: loadedCommunicationProfile?.favoriteEmojis ?? [],
       sentenceStyle:
           loadedCommunicationProfile?.sentenceStyle ?? 'Not learned yet',
+      averageWordsPerMessage:
+          loadedCommunicationProfile?.averageWordsPerMessage ?? 0,
+      emojiUsageRate: loadedCommunicationProfile?.emojiUsageRate ?? 0,
+      questionRate: loadedCommunicationProfile?.questionRate ?? 0,
+      exclamationRate: loadedCommunicationProfile?.exclamationRate ?? 0,
     );
 
     if (!mounted) return;

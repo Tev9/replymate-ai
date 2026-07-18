@@ -204,6 +204,7 @@ class LearningManager {
         await communicationStatisticsService.updateStatistics(
       contactName: contactName,
       profile: analyzedProfile,
+      text: reply,
     );
 
     final cumulativeProfile =

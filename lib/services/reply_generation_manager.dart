@@ -41,6 +41,10 @@ class ReplyGenerationManager {
     required List<String> favoriteWords,
     required List<String> favoriteEmojis,
     required String sentenceStyle,
+    required int averageWordsPerMessage,
+    required double emojiUsageRate,
+    required double questionRate,
+    required double exclamationRate,
   }) async {
     final analysis = await aiService.analyzeConversation(
       message: message,
@@ -60,6 +64,10 @@ class ReplyGenerationManager {
       favoriteWords: favoriteWords,
       favoriteEmojis: favoriteEmojis,
       sentenceStyle: sentenceStyle,
+      averageWordsPerMessage: averageWordsPerMessage,
+      emojiUsageRate: emojiUsageRate,
+      questionRate: questionRate,
+      exclamationRate: exclamationRate,
     );
 
     return ReplyGenerationResult(
@@ -72,9 +80,8 @@ class ReplyGenerationManager {
       scores: List<int>.from(
         replyData['scores'] ?? [],
       ),
-      bestReplyIndex: replyData['bestReply'] is int
-          ? replyData['bestReply'] as int
-          : -1,
+      bestReplyIndex:
+          replyData['bestReply'] is int ? replyData['bestReply'] as int : -1,
       bestReplyReason: replyData['reason']?.toString() ?? '',
     );
   }
