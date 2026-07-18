@@ -22,6 +22,7 @@ import '../widgets/communication_statistics_card.dart';
 import '../services/learning_manager.dart';
 import '../services/reply_generation_manager.dart';
 import '../services/reply_rewrite_manager.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -437,6 +438,15 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('ReplyMate AI'),
+        actions: [
+          IconButton(
+            tooltip: 'Sign out',
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+            },
+            icon: const Icon(Icons.logout),
+          ),
+        ],
         centerTitle: true,
       ),
       body: Padding(
