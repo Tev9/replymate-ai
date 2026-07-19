@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/communication_profile.dart';
@@ -6,27 +7,37 @@ import '../models/communication_statistics.dart';
 
 class CommunicationStatisticsService {
   String _key(String contactName) {
-    return 'communication_statistics_$contactName';
+    final normalizedContactName =
+        contactName.trim().toLowerCase();
+
+    return 'communication_statistics_$normalizedContactName';
+  }
+
+  CommunicationStatistics emptyStatistics() {
+    return CommunicationStatistics(
+      greetings: {},
+      closings: {},
+      favoriteWords: {},
+      favoriteEmojis: {},
+      sentenceStyles: {},
+    );
   }
 
   Future<CommunicationStatistics> loadStatistics(
     String contactName,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getString(_key(contactName));
+
+    final data = prefs.getString(
+      _key(contactName),
+    );
 
     if (data == null) {
-      return CommunicationStatistics(
-        greetings: {},
-        closings: {},
-        favoriteWords: {},
-        favoriteEmojis: {},
-        sentenceStyles: {},
-      );
+      return emptyStatistics();
     }
 
     return CommunicationStatistics.fromJson(
-      jsonDecode(data),
+      jsonDecode(data) as Map<String, dynamic>,
     );
   }
 
@@ -76,7 +87,8 @@ class CommunicationStatisticsService {
     }
 
     for (final word in profile.favoriteWords) {
-      favoriteWords[word] = (favoriteWords[word] ?? 0) + 1;
+      favoriteWords[word] =
+          (favoriteWords[word] ?? 0) + 1;
     }
 
     for (final emoji in profile.favoriteEmojis) {
@@ -116,17 +128,25 @@ class CommunicationStatisticsService {
       favoriteWords: favoriteWords,
       favoriteEmojis: favoriteEmojis,
       sentenceStyles: sentenceStyles,
-      totalMessages: current.totalMessages + messages.length,
-      totalWords: current.totalWords + newTotalWords,
+      totalMessages:
+          current.totalMessages + messages.length,
+      totalWords:
+          current.totalWords + newTotalWords,
       messagesWithEmojis:
-          current.messagesWithEmojis + newMessagesWithEmojis,
+          current.messagesWithEmojis +
+          newMessagesWithEmojis,
       questionMessages:
-          current.questionMessages + newQuestionMessages,
+          current.questionMessages +
+          newQuestionMessages,
       exclamationMessages:
-          current.exclamationMessages + newExclamationMessages,
+          current.exclamationMessages +
+          newExclamationMessages,
     );
 
-    await saveStatistics(contactName, updated);
+    await saveStatistics(
+      contactName,
+      updated,
+    );
 
     return updated;
   }

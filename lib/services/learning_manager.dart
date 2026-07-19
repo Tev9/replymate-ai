@@ -3,13 +3,13 @@ import '../models/communication_statistics.dart';
 import '../models/learning_event.dart';
 import '../services/style_learning_service.dart';
 import '../services/communication_analyzer.dart';
-import '../services/communication_statistics_service.dart';
 import '../services/communication_profile_builder.dart';
-import '../services/communication_profile_service.dart';
+import '../repositories/communication_profile_repository.dart';
 import '../models/conversation_memory.dart';
 import '../models/learning_history.dart';
-import '../services/memory_service.dart';
-import '../services/learning_history_service.dart';
+import '../repositories/memory_repository.dart';
+import '../repositories/learning_history_repository.dart';
+import '../repositories/communication_statistics_repository.dart';
 
 class LearningResult {
   final CommunicationProfile profile;
@@ -30,20 +30,20 @@ class LearningResult {
 class LearningManager {
   final StyleLearningService styleLearningService;
   final CommunicationAnalyzer communicationAnalyzer;
-  final CommunicationStatisticsService communicationStatisticsService;
+  final CommunicationStatisticsRepository communicationStatisticsRepository;
   final CommunicationProfileBuilder communicationProfileBuilder;
-  final CommunicationProfileService communicationProfileService;
-  final MemoryService memoryService;
-  final LearningHistoryService learningHistoryService;
+  final CommunicationProfileRepository communicationProfileRepository;
+  final MemoryRepository memoryRepository;
+  final LearningHistoryRepository learningHistoryRepository;
 
   LearningManager({
     required this.styleLearningService,
     required this.communicationAnalyzer,
-    required this.communicationStatisticsService,
+    required this.communicationStatisticsRepository,
     required this.communicationProfileBuilder,
-    required this.communicationProfileService,
-    required this.memoryService,
-    required this.learningHistoryService,
+    required this.communicationProfileRepository,
+    required this.memoryRepository,
+    required this.learningHistoryRepository,
   });
 
   int increaseConfidence({
@@ -80,7 +80,7 @@ class LearningManager {
     required String title,
     required String description,
   }) async {
-    await learningHistoryService.addHistory(
+    await learningHistoryRepository.addHistory(
       contactName,
       LearningHistory(
         title: title,
@@ -119,7 +119,7 @@ class LearningManager {
       lastUpdated: DateTime.now(),
     );
 
-    await memoryService.saveMemory(memory);
+    await memoryRepository.saveMemory(memory);
 
     return memory;
   }
@@ -133,7 +133,7 @@ class LearningManager {
     required String preferredPlatform,
     required String preferredReplyLength,
   }) async {
-    final currentMemory = await memoryService.loadMemory(contactName);
+    final currentMemory = await memoryRepository.loadMemory(contactName);
 
     final messagesLearned = (currentMemory?.messagesLearned ?? 0) + 1;
 
@@ -162,18 +162,20 @@ class LearningManager {
   Future<LearningResult?> loadContact(
     String contactName,
   ) async {
-    final memory = await memoryService.loadMemory(contactName);
+    final memory = await memoryRepository.loadMemory(contactName);
 
     if (memory == null) {
       return null;
     }
 
-    final history = await learningHistoryService.loadHistory(contactName);
+    final history = await learningHistoryRepository.loadHistory(contactName);
 
-    final profile = await communicationProfileService.loadProfile(contactName);
+    final profile =
+        await communicationProfileRepository.loadProfile(contactName);
 
-    final statistics =
-        await communicationStatisticsService.loadStatistics(contactName);
+    final statistics = await communicationStatisticsRepository.loadStatistics(
+      contactName,
+    );
 
     return LearningResult(
       profile: profile ??
@@ -201,7 +203,7 @@ class LearningManager {
     final analyzedProfile = communicationAnalyzer.analyze(reply);
 
     final updatedStatistics =
-        await communicationStatisticsService.updateStatistics(
+        await communicationStatisticsRepository.updateStatistics(
       contactName: contactName,
       profile: analyzedProfile,
       text: reply,
@@ -210,7 +212,7 @@ class LearningManager {
     final cumulativeProfile =
         communicationProfileBuilder.build(updatedStatistics);
 
-    await communicationProfileService.saveProfile(
+    await communicationProfileRepository.saveProfile(
       contactName,
       cumulativeProfile,
     );
@@ -232,7 +234,7 @@ class LearningManager {
     required String preferredReplyLength,
     required LearningEvent event,
   }) async {
-    final currentMemory = await memoryService.loadMemory(contactName);
+    final currentMemory = await memoryRepository.loadMemory(contactName);
 
     final isFirstLearning =
         currentMemory == null || currentMemory.messagesLearned == 0;
@@ -303,7 +305,7 @@ class LearningManager {
     );
 
     final updatedHistory =
-        await learningHistoryService.loadHistory(contactName);
+        await learningHistoryRepository.loadHistory(contactName);
 
     return LearningResult(
       profile: learningResult.profile,

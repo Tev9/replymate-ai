@@ -23,6 +23,10 @@ import '../services/learning_manager.dart';
 import '../services/reply_generation_manager.dart';
 import '../services/reply_rewrite_manager.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../repositories/hybrid_communication_profile_repository.dart';
+import '../repositories/hybrid_memory_repository.dart';
+import '../repositories/hybrid_learning_history_repository.dart';
+import '../repositories/hybrid_communication_statistics_repository.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -77,6 +81,14 @@ class _HomePageState extends State<HomePage> {
   late final ReplyGenerationManager replyGenerationManager;
   late final ReplyRewriteManager replyRewriteManager;
 
+  late final HybridCommunicationProfileRepository
+      communicationProfileRepository;
+
+  late final HybridMemoryRepository memoryRepository;
+  late final HybridLearningHistoryRepository learningHistoryRepository;
+  late final HybridCommunicationStatisticsRepository
+      communicationStatisticsRepository;
+
   final LearningHistoryService learningHistoryService =
       LearningHistoryService();
 
@@ -84,14 +96,30 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
 
+    communicationProfileRepository = HybridCommunicationProfileRepository(
+      localService: communicationProfileService,
+    );
+
+    memoryRepository = HybridMemoryRepository(
+      localService: memoryService,
+    );
+
+    learningHistoryRepository = HybridLearningHistoryRepository(
+      localService: learningHistoryService,
+    );
+
+    communicationStatisticsRepository = HybridCommunicationStatisticsRepository(
+      localService: communicationStatisticsService,
+    );
+
     learningManager = LearningManager(
       styleLearningService: styleLearningService,
       communicationAnalyzer: communicationAnalyzer,
-      communicationStatisticsService: communicationStatisticsService,
+      communicationStatisticsRepository: communicationStatisticsRepository,
       communicationProfileBuilder: communicationProfileBuilder,
-      communicationProfileService: communicationProfileService,
-      memoryService: memoryService,
-      learningHistoryService: learningHistoryService,
+      communicationProfileRepository: communicationProfileRepository,
+      memoryRepository: memoryRepository,
+      learningHistoryRepository: learningHistoryRepository,
     );
     replyGenerationManager = ReplyGenerationManager(
       aiService: aiService,
