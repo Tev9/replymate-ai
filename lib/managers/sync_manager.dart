@@ -8,6 +8,8 @@ class SyncManager {
   final CloudStorageService _cloudStorageService;
   final FirebaseAuth _firebaseAuth;
 
+  bool _isSyncing = false;
+
   SyncManager({
     PendingSyncService? pendingSyncService,
     CloudStorageService? cloudStorageService,
@@ -16,40 +18,47 @@ class SyncManager {
         _cloudStorageService = cloudStorageService ?? CloudStorageService(),
         _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
+  bool get isSyncing => _isSyncing;
+
   Future<int> syncPendingOperations() async {
+    if (_isSyncing) {
+      return 0;
+    }
+
     final currentUser = _firebaseAuth.currentUser;
 
     if (currentUser == null) {
       return 0;
     }
 
-    final operations = await _pendingSyncService.loadOperationsForUser(
-      currentUser.uid,
-    );
+    _isSyncing = true;
 
-    var successfulSyncs = 0;
+    try {
+      final operations =
+          await _pendingSyncService.loadOperationsForUser(currentUser.uid);
 
-    for (final operation in operations) {
-      try {
-        await _cloudStorageService.saveDocument(
-          collection: operation.collection,
-          documentId: operation.documentId,
-          data: operation.data,
-        );
+      var successfulSyncs = 0;
 
-        await _pendingSyncService.removeOperation(
-          operation.id,
-        );
+      for (final operation in operations) {
+        try {
+          await _cloudStorageService.saveDocument(
+            collection: operation.collection,
+            documentId: operation.documentId,
+            data: operation.data,
+          );
 
-        successfulSyncs++;
-      } catch (_) {
-        await _pendingSyncService.increaseRetryCount(
-          operation,
-        );
+          await _pendingSyncService.removeOperation(operation.id);
+
+          successfulSyncs++;
+        } catch (_) {
+          await _pendingSyncService.increaseRetryCount(operation);
+        }
       }
-    }
 
-    return successfulSyncs;
+      return successfulSyncs;
+    } finally {
+      _isSyncing = false;
+    }
   }
 
   Future<int> getPendingCount() async {
@@ -59,8 +68,6 @@ class SyncManager {
       return 0;
     }
 
-    return _pendingSyncService.getPendingCount(
-      currentUser.uid,
-    );
+    return _pendingSyncService.getPendingCount(currentUser.uid);
   }
 }
