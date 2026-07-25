@@ -1,23 +1,22 @@
 import '../models/learning_history.dart';
 import '../services/cloud_storage_service.dart';
 import '../services/learning_history_service.dart';
+import '../services/pending_sync_service.dart';
 
 import 'learning_history_repository.dart';
 
-class HybridLearningHistoryRepository
-    implements LearningHistoryRepository {
+class HybridLearningHistoryRepository implements LearningHistoryRepository {
   final LearningHistoryService _localService;
   final CloudStorageService _cloudService;
+  final PendingSyncService _pendingSyncService;
 
   HybridLearningHistoryRepository({
     LearningHistoryService? localService,
     CloudStorageService? cloudService,
-  })  : _localService =
-            localService ??
-            LearningHistoryService(),
-        _cloudService =
-            cloudService ??
-            CloudStorageService();
+    PendingSyncService? pendingSyncService,
+  })  : _localService = localService ?? LearningHistoryService(),
+        _cloudService = cloudService ?? CloudStorageService(),
+        _pendingSyncService = pendingSyncService ?? PendingSyncService();
 
   String _normalizeContactName(
     String contactName,
@@ -29,11 +28,9 @@ class HybridLearningHistoryRepository
   Future<List<LearningHistory>> loadHistory(
     String contactName,
   ) async {
-    final normalizedContactName =
-        _normalizeContactName(contactName);
+    final normalizedContactName = _normalizeContactName(contactName);
 
-    final localHistory =
-        await _localService.loadHistory(
+    final localHistory = await _localService.loadHistory(
       normalizedContactName,
     );
 
@@ -42,8 +39,7 @@ class HybridLearningHistoryRepository
     }
 
     try {
-      final cloudData =
-          await _cloudService.loadDocument(
+      final cloudData = await _cloudService.loadDocument(
         collection: 'learningHistories',
         documentId: normalizedContactName,
       );
@@ -52,19 +48,15 @@ class HybridLearningHistoryRepository
         return [];
       }
 
-      final List<dynamic> historyJson =
-          cloudData['history'] ?? [];
+      final List<dynamic> historyJson = cloudData['history'] ?? [];
 
-      final history =
-          historyJson
-              .map(
-                (item) =>
-                    LearningHistory.fromJson(
-                  item
-                      as Map<String, dynamic>,
-                ),
-              )
-              .toList();
+      final history = historyJson
+          .map(
+            (item) => LearningHistory.fromJson(
+              item as Map<String, dynamic>,
+            ),
+          )
+          .toList();
 
       for (final item in history.reversed) {
         await _localService.addHistory(
@@ -84,8 +76,7 @@ class HybridLearningHistoryRepository
     String contactName,
     LearningHistory history,
   ) async {
-    final normalizedContactName =
-        _normalizeContactName(contactName);
+    final normalizedContactName = _normalizeContactName(contactName);
 
     await _localService.addHistory(
       normalizedContactName,
@@ -93,8 +84,7 @@ class HybridLearningHistoryRepository
     );
 
     try {
-      final historyList =
-          await _localService.loadHistory(
+      final historyList = await _localService.loadHistory(
         normalizedContactName,
       );
 
@@ -102,15 +92,15 @@ class HybridLearningHistoryRepository
         collection: 'learningHistories',
         documentId: normalizedContactName,
         data: {
-          'history':
-              historyList
-                  .map((e) => e.toJson())
-                  .toList(),
+          'history': historyList.map((e) => e.toJson()).toList(),
         },
       );
     } catch (_) {
-      // Local save succeeded.
-      // Cloud retry support will come later.
+      await _pendingSyncService.addOperation(
+        collection: 'learningHistory',
+        documentId: normalizedContactName,
+        data: history.toJson(),
+      );
     }
   }
 }

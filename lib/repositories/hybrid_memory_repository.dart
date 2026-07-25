@@ -1,17 +1,21 @@
 import '../models/conversation_memory.dart';
 import '../services/cloud_storage_service.dart';
 import '../services/memory_service.dart';
+import '../services/pending_sync_service.dart';
 import 'memory_repository.dart';
 
 class HybridMemoryRepository implements MemoryRepository {
   final MemoryService _localService;
   final CloudStorageService _cloudService;
+  final PendingSyncService _pendingSyncService;
 
   HybridMemoryRepository({
     MemoryService? localService,
     CloudStorageService? cloudService,
+    PendingSyncService? pendingSyncService,
   })  : _localService = localService ?? MemoryService(),
-        _cloudService = cloudService ?? CloudStorageService();
+        _cloudService = cloudService ?? CloudStorageService(),
+        _pendingSyncService = pendingSyncService ?? PendingSyncService();
 
   String _normalizeContactName(String contactName) {
     return contactName.trim().toLowerCase();
@@ -21,11 +25,9 @@ class HybridMemoryRepository implements MemoryRepository {
   Future<ConversationMemory?> loadMemory(
     String contactName,
   ) async {
-    final normalizedContactName =
-        _normalizeContactName(contactName);
+    final normalizedContactName = _normalizeContactName(contactName);
 
-    final localMemory =
-        await _localService.loadMemory(
+    final localMemory = await _localService.loadMemory(
       normalizedContactName,
     );
 
@@ -34,8 +36,7 @@ class HybridMemoryRepository implements MemoryRepository {
     }
 
     try {
-      final cloudData =
-          await _cloudService.loadDocument(
+      final cloudData = await _cloudService.loadDocument(
         collection: 'conversationMemories',
         documentId: normalizedContactName,
       );
@@ -44,8 +45,7 @@ class HybridMemoryRepository implements MemoryRepository {
         return null;
       }
 
-      final cloudMemory =
-          ConversationMemory.fromJson(cloudData);
+      final cloudMemory = ConversationMemory.fromJson(cloudData);
 
       await _localService.saveMemory(cloudMemory);
 
@@ -59,8 +59,7 @@ class HybridMemoryRepository implements MemoryRepository {
   Future<void> saveMemory(
     ConversationMemory memory,
   ) async {
-    final normalizedContactName =
-        _normalizeContactName(memory.contactName);
+    final normalizedContactName = _normalizeContactName(memory.contactName);
 
     final normalizedMemory = ConversationMemory(
       contactName: normalizedContactName,
@@ -85,8 +84,11 @@ class HybridMemoryRepository implements MemoryRepository {
         data: normalizedMemory.toJson(),
       );
     } catch (_) {
-      // The local save succeeded.
-      // Retry handling will be added later.
+      await _pendingSyncService.addOperation(
+        collection: 'conversationMemories',
+        documentId: normalizedContactName,
+        data: normalizedMemory.toJson(),
+      );
     }
   }
 }

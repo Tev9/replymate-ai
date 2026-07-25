@@ -4,29 +4,18 @@ import '../widgets/recommendation_card.dart';
 import '../widgets/contact_profile_card.dart';
 import '../widgets/learning_timeline_card.dart';
 import 'package:flutter/services.dart';
-import '../services/ai_service.dart';
-import '../services/memory_service.dart';
 import '../models/conversation_memory.dart';
 import '../models/learning_event.dart';
-import '../services/style_learning_service.dart';
-import '../services/learning_history_service.dart';
 import '../models/learning_history.dart';
-import '../services/communication_analyzer.dart';
 import '../models/communication_profile.dart';
-import '../services/communication_profile_service.dart';
 import '../widgets/communication_insights_card.dart';
-import '../services/communication_statistics_service.dart';
-import '../services/communication_profile_builder.dart';
 import '../models/communication_statistics.dart';
 import '../widgets/communication_statistics_card.dart';
 import '../services/learning_manager.dart';
 import '../services/reply_generation_manager.dart';
 import '../services/reply_rewrite_manager.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../repositories/hybrid_communication_profile_repository.dart';
-import '../repositories/hybrid_memory_repository.dart';
-import '../repositories/hybrid_learning_history_repository.dart';
-import '../repositories/hybrid_communication_statistics_repository.dart';
+import '../core/service_locator.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -64,69 +53,26 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController contactController = TextEditingController();
   final TextEditingController writingStyleController = TextEditingController();
 
-  final AiService aiService = AiService();
-  final MemoryService memoryService = MemoryService();
-  final StyleLearningService styleLearningService = StyleLearningService();
+  
 
-  final CommunicationAnalyzer communicationAnalyzer = CommunicationAnalyzer();
-  final CommunicationProfileService communicationProfileService =
-      CommunicationProfileService();
-  final CommunicationStatisticsService communicationStatisticsService =
-      CommunicationStatisticsService();
 
-  final CommunicationProfileBuilder communicationProfileBuilder =
-      CommunicationProfileBuilder();
 
   late final LearningManager learningManager;
   late final ReplyGenerationManager replyGenerationManager;
   late final ReplyRewriteManager replyRewriteManager;
 
-  late final HybridCommunicationProfileRepository
-      communicationProfileRepository;
-
-  late final HybridMemoryRepository memoryRepository;
-  late final HybridLearningHistoryRepository learningHistoryRepository;
-  late final HybridCommunicationStatisticsRepository
-      communicationStatisticsRepository;
-
-  final LearningHistoryService learningHistoryService =
-      LearningHistoryService();
 
   @override
   void initState() {
     super.initState();
 
-    communicationProfileRepository = HybridCommunicationProfileRepository(
-      localService: communicationProfileService,
-    );
+    learningManager = serviceLocator<LearningManager>();
 
-    memoryRepository = HybridMemoryRepository(
-      localService: memoryService,
-    );
+    replyGenerationManager =
+        serviceLocator<ReplyGenerationManager>();
 
-    learningHistoryRepository = HybridLearningHistoryRepository(
-      localService: learningHistoryService,
-    );
-
-    communicationStatisticsRepository = HybridCommunicationStatisticsRepository(
-      localService: communicationStatisticsService,
-    );
-
-    learningManager = LearningManager(
-      styleLearningService: styleLearningService,
-      communicationAnalyzer: communicationAnalyzer,
-      communicationStatisticsRepository: communicationStatisticsRepository,
-      communicationProfileBuilder: communicationProfileBuilder,
-      communicationProfileRepository: communicationProfileRepository,
-      memoryRepository: memoryRepository,
-      learningHistoryRepository: learningHistoryRepository,
-    );
-    replyGenerationManager = ReplyGenerationManager(
-      aiService: aiService,
-    );
-    replyRewriteManager = ReplyRewriteManager(
-      aiService: aiService,
-    );
+    replyRewriteManager =
+        serviceLocator<ReplyRewriteManager>();
   }
 
   Future<void> generateReply() async {

@@ -1,20 +1,22 @@
 import '../models/communication_profile.dart';
 import '../services/cloud_storage_service.dart';
 import '../services/communication_profile_service.dart';
+import '../services/pending_sync_service.dart';
 import 'communication_profile_repository.dart';
 
 class HybridCommunicationProfileRepository
     implements CommunicationProfileRepository {
   final CommunicationProfileService _localService;
   final CloudStorageService _cloudService;
+  final PendingSyncService _pendingSyncService;
 
   HybridCommunicationProfileRepository({
     CommunicationProfileService? localService,
     CloudStorageService? cloudService,
-  })  : _localService =
-            localService ?? CommunicationProfileService(),
-        _cloudService =
-            cloudService ?? CloudStorageService();
+    PendingSyncService? pendingSyncService,
+  })  : _localService = localService ?? CommunicationProfileService(),
+        _cloudService = cloudService ?? CloudStorageService(),
+        _pendingSyncService = pendingSyncService ?? PendingSyncService();
 
   String _normalizeContactName(String contactName) {
     return contactName.trim().toLowerCase();
@@ -24,12 +26,10 @@ class HybridCommunicationProfileRepository
   Future<CommunicationProfile?> loadProfile(
     String contactName,
   ) async {
-    final normalizedContactName =
-        _normalizeContactName(contactName);
+    final normalizedContactName = _normalizeContactName(contactName);
 
     // Use the local copy first for speed and offline support.
-    final localProfile =
-        await _localService.loadProfile(
+    final localProfile = await _localService.loadProfile(
       normalizedContactName,
     );
 
@@ -48,8 +48,7 @@ class HybridCommunicationProfileRepository
         return null;
       }
 
-      final cloudProfile =
-          CommunicationProfile.fromJson(cloudData);
+      final cloudProfile = CommunicationProfile.fromJson(cloudData);
 
       // Cache the restored profile locally.
       await _localService.saveProfile(
@@ -68,8 +67,7 @@ class HybridCommunicationProfileRepository
     String contactName,
     CommunicationProfile profile,
   ) async {
-    final normalizedContactName =
-        _normalizeContactName(contactName);
+    final normalizedContactName = _normalizeContactName(contactName);
 
     // Local save is the primary save and supports offline use.
     await _localService.saveProfile(
@@ -85,8 +83,11 @@ class HybridCommunicationProfileRepository
         data: profile.toJson(),
       );
     } catch (_) {
-      // The local save has succeeded.
-      // A retry system will be added later.
+      await _pendingSyncService.addOperation(
+        collection: 'communicationProfiles',
+        documentId: normalizedContactName,
+        data: profile.toJson(),
+      );
     }
   }
 }
