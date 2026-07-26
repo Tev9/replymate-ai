@@ -58,4 +58,49 @@ class CloudStorageService {
 
     return snapshot.data();
   }
+
+  Future<void> saveSubcollectionDocument({
+    required String collection,
+    required String documentId,
+    required String subcollection,
+    required String subdocumentId,
+    required Map<String, dynamic> data,
+  }) async {
+    await _firestore
+        .collection('users')
+        .doc(_userId)
+        .collection(collection)
+        .doc(_safeDocumentId(documentId))
+        .collection(subcollection)
+        .doc(_safeDocumentId(subdocumentId))
+        .set(
+      {
+        ...data,
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> loadSubcollectionDocuments({
+    required String collection,
+    required String documentId,
+    required String subcollection,
+  }) async {
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(_userId)
+        .collection(collection)
+        .doc(_safeDocumentId(documentId))
+        .collection(subcollection)
+        .orderBy('timestamp', descending: true)
+        .get();
+
+    return snapshot.docs.map((document) {
+      return {
+        'id': document.id,
+        ...document.data(),
+      };
+    }).toList();
+  }
 }

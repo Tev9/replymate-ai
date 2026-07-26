@@ -3,6 +3,8 @@ class PendingSyncOperation {
   final String userId;
   final String collection;
   final String documentId;
+  final String? subcollection;
+  final String? subdocumentId;
   final Map<String, dynamic> data;
   final DateTime createdAt;
   final int retryCount;
@@ -13,6 +15,8 @@ class PendingSyncOperation {
     required this.userId,
     required this.collection,
     required this.documentId,
+    this.subcollection,
+    this.subdocumentId,
     required this.data,
     required this.createdAt,
     this.retryCount = 0,
@@ -24,6 +28,8 @@ class PendingSyncOperation {
     String? userId,
     String? collection,
     String? documentId,
+    String? subcollection,
+    String? subdocumentId,
     Map<String, dynamic>? data,
     DateTime? createdAt,
     int? retryCount,
@@ -35,6 +41,8 @@ class PendingSyncOperation {
       userId: userId ?? this.userId,
       collection: collection ?? this.collection,
       documentId: documentId ?? this.documentId,
+      subcollection: subcollection ?? this.subcollection,
+      subdocumentId: subdocumentId ?? this.subdocumentId,
       data: data ?? this.data,
       createdAt: createdAt ?? this.createdAt,
       retryCount: retryCount ?? this.retryCount,
@@ -48,6 +56,8 @@ class PendingSyncOperation {
       'userId': userId,
       'collection': collection,
       'documentId': documentId,
+      'subcollection': subcollection,
+      'subdocumentId': subdocumentId,
       'data': data,
       'createdAt': createdAt.toIso8601String(),
       'retryCount': retryCount,
@@ -65,6 +75,8 @@ class PendingSyncOperation {
       userId: json['userId'] as String,
       collection: json['collection'] as String,
       documentId: json['documentId'] as String,
+      subcollection: json['subcollection'] as String?,
+      subdocumentId: json['subdocumentId'] as String?,
       data: Map<String, dynamic>.from(
         json['data'] as Map,
       ),

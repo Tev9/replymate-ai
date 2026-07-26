@@ -47,11 +47,24 @@ class SyncManager {
         }
 
         try {
-          await _cloudStorageService.saveDocument(
-            collection: operation.collection,
-            documentId: operation.documentId,
-            data: operation.data,
-          );
+          final subcollection = operation.subcollection;
+          final subdocumentId = operation.subdocumentId;
+
+          if (subcollection != null && subdocumentId != null) {
+            await _cloudStorageService.saveSubcollectionDocument(
+              collection: operation.collection,
+              documentId: operation.documentId,
+              subcollection: subcollection,
+              subdocumentId: subdocumentId,
+              data: operation.data,
+            );
+          } else {
+            await _cloudStorageService.saveDocument(
+              collection: operation.collection,
+              documentId: operation.documentId,
+              data: operation.data,
+            );
+          }
 
           await _pendingSyncService.removeOperation(
             operation.id,

@@ -56,6 +56,8 @@ class PendingSyncService {
   Future<bool> addOperation({
     required String collection,
     required String documentId,
+    String? subcollection,
+    String? subdocumentId,
     required Map<String, dynamic> data,
   }) async {
     final currentUser = _firebaseAuth.currentUser;
@@ -71,18 +73,30 @@ class PendingSyncService {
       (operation) =>
           operation.userId == userId &&
           operation.collection == collection &&
-          operation.documentId == documentId,
+          operation.documentId == documentId &&
+          operation.subcollection == subcollection &&
+          operation.subdocumentId == subdocumentId,
     );
 
     final createdAt = DateTime.now();
 
+    final operationParts = [
+      userId,
+      collection,
+      documentId,
+      if (subcollection != null) subcollection,
+      if (subdocumentId != null) subdocumentId,
+      createdAt.microsecondsSinceEpoch.toString(),
+    ];
+
     operations.add(
       PendingSyncOperation(
-        id: '${userId}_${collection}_${documentId}_'
-            '${createdAt.microsecondsSinceEpoch}',
+        id: operationParts.join('_'),
         userId: userId,
         collection: collection,
         documentId: documentId,
+        subcollection: subcollection,
+        subdocumentId: subdocumentId,
         data: Map<String, dynamic>.from(data),
         createdAt: createdAt,
       ),

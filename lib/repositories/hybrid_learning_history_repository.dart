@@ -18,9 +18,7 @@ class HybridLearningHistoryRepository implements LearningHistoryRepository {
         _cloudService = cloudService ?? CloudStorageService(),
         _pendingSyncService = pendingSyncService ?? PendingSyncService();
 
-  String _normalizeContactName(
-    String contactName,
-  ) {
+  String _normalizeContactName(String contactName) {
     return contactName.trim().toLowerCase();
   }
 
@@ -39,33 +37,23 @@ class HybridLearningHistoryRepository implements LearningHistoryRepository {
     }
 
     try {
-      final cloudData = await _cloudService.loadDocument(
+      final cloudHistoryData = await _cloudService.loadSubcollectionDocuments(
         collection: 'learningHistories',
         documentId: normalizedContactName,
+        subcollection: 'events',
       );
 
-      if (cloudData == null) {
-        return [];
-      }
+      final cloudHistory =
+          cloudHistoryData.map(LearningHistory.fromJson).toList();
 
-      final List<dynamic> historyJson = cloudData['history'] ?? [];
-
-      final history = historyJson
-          .map(
-            (item) => LearningHistory.fromJson(
-              item as Map<String, dynamic>,
-            ),
-          )
-          .toList();
-
-      for (final item in history.reversed) {
+      for (final item in cloudHistory.reversed) {
         await _localService.addHistory(
           normalizedContactName,
           item,
         );
       }
 
-      return history;
+      return cloudHistory;
     } catch (_) {
       return [];
     }
@@ -84,21 +72,19 @@ class HybridLearningHistoryRepository implements LearningHistoryRepository {
     );
 
     try {
-      final historyList = await _localService.loadHistory(
-        normalizedContactName,
-      );
-
-      await _cloudService.saveDocument(
+      await _cloudService.saveSubcollectionDocument(
         collection: 'learningHistories',
         documentId: normalizedContactName,
-        data: {
-          'history': historyList.map((e) => e.toJson()).toList(),
-        },
+        subcollection: 'events',
+        subdocumentId: history.id,
+        data: history.toJson(),
       );
     } catch (_) {
       await _pendingSyncService.addOperation(
-        collection: 'learningHistory',
+        collection: 'learningHistories',
         documentId: normalizedContactName,
+        subcollection: 'events',
+        subdocumentId: history.id,
         data: history.toJson(),
       );
     }
