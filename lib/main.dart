@@ -9,6 +9,7 @@ import 'firebase_options.dart';
 import 'managers/sync_manager.dart';
 import 'screens/auth_page.dart';
 import 'screens/home_page.dart';
+import 'services/connectivity_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +46,7 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   String? _lastSyncedUserId;
+  bool _connectivityListenerStarted = false;
 
   void _schedulePendingSync(User user) {
     if (_lastSyncedUserId == user.uid) {
@@ -55,6 +57,7 @@ class _AuthGateState extends State<AuthGate> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_runPendingSync());
+      unawaited(_startConnectivityListener());
     });
   }
 
@@ -64,6 +67,32 @@ class _AuthGateState extends State<AuthGate> {
     } catch (error) {
       debugPrint('Pending sync failed: $error');
     }
+  }
+
+  Future<void> _startConnectivityListener() async {
+    if (_connectivityListenerStarted) {
+      return;
+    }
+
+    _connectivityListenerStarted = true;
+
+    try {
+      await serviceLocator<ConnectivityService>().startListening(
+        onConnectionRestored: _runPendingSync,
+      );
+    } catch (error) {
+      _connectivityListenerStarted = false;
+      debugPrint('Connectivity listener failed: $error');
+    }
+  }
+
+  @override
+  void dispose() {
+    unawaited(
+      serviceLocator<ConnectivityService>().stopListening(),
+    );
+
+    super.dispose();
   }
 
   @override

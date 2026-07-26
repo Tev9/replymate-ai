@@ -10,6 +10,7 @@ import '../services/communication_profile_builder.dart';
 import '../services/learning_history_service.dart';
 import '../services/cloud_storage_service.dart';
 import '../services/pending_sync_service.dart';
+import '../services/connectivity_service.dart';
 
 import '../repositories/hybrid_memory_repository.dart';
 import '../repositories/hybrid_learning_history_repository.dart';
@@ -64,6 +65,10 @@ void setupServiceLocator() {
 
   serviceLocator.registerLazySingleton<PendingSyncService>(
     PendingSyncService.new,
+  );
+
+  serviceLocator.registerLazySingleton<ConnectivityService>(
+    ConnectivityService.new,
   );
 
   // Repositories
