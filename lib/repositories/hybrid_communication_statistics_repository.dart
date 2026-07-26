@@ -1,36 +1,26 @@
 import '../models/communication_profile.dart';
 import '../models/communication_statistics.dart';
-import '../services/cloud_storage_service.dart';
 import '../services/communication_statistics_service.dart';
-import '../services/pending_sync_service.dart';
 
+import 'base/hybrid_repository.dart';
 import 'communication_statistics_repository.dart';
 
 class HybridCommunicationStatisticsRepository
+    extends HybridRepository<CommunicationStatistics>
     implements CommunicationStatisticsRepository {
   final CommunicationStatisticsService _localService;
-  final CloudStorageService _cloudService;
-  final PendingSyncService _pendingSyncService;
 
   HybridCommunicationStatisticsRepository({
     CommunicationStatisticsService? localService,
-    CloudStorageService? cloudService,
-    PendingSyncService? pendingSyncService,
-  })  : _localService = localService ?? CommunicationStatisticsService(),
-        _cloudService = cloudService ?? CloudStorageService(),
-        _pendingSyncService = pendingSyncService ?? PendingSyncService();
-
-  String _normalizeContactName(
-    String contactName,
-  ) {
-    return contactName.trim().toLowerCase();
-  }
+    super.cloudService,
+    super.pendingSyncService,
+  }) : _localService = localService ?? CommunicationStatisticsService();
 
   @override
   Future<CommunicationStatistics> loadStatistics(
     String contactName,
   ) async {
-    final normalizedContactName = _normalizeContactName(contactName);
+    final normalizedContactName = normalizeDocumentId(contactName);
 
     final localStatistics = await _localService.loadStatistics(
       normalizedContactName,
@@ -48,7 +38,7 @@ class HybridCommunicationStatisticsRepository
     }
 
     try {
-      final cloudData = await _cloudService.loadDocument(
+      final cloudData = await cloudService.loadDocument(
         collection: 'communicationStatistics',
         documentId: normalizedContactName,
       );
@@ -76,27 +66,14 @@ class HybridCommunicationStatisticsRepository
   Future<void> saveStatistics(
     String contactName,
     CommunicationStatistics statistics,
-  ) async {
-    final normalizedContactName = _normalizeContactName(contactName);
-
-    await _localService.saveStatistics(
-      normalizedContactName,
-      statistics,
+  ) {
+    return saveDocumentLocalFirst(
+      collection: 'communicationStatistics',
+      documentId: contactName,
+      value: statistics,
+      saveLocal: _localService.saveStatistics,
+      toJson: (value) => value.toJson(),
     );
-
-    try {
-      await _cloudService.saveDocument(
-        collection: 'communicationStatistics',
-        documentId: normalizedContactName,
-        data: statistics.toJson(),
-      );
-    } catch (_) {
-      await _pendingSyncService.addOperation(
-        collection: 'communicationStatistics',
-        documentId: normalizedContactName,
-        data: statistics.toJson(),
-      );
-    }
   }
 
   @override
@@ -105,7 +82,7 @@ class HybridCommunicationStatisticsRepository
     required CommunicationProfile profile,
     required String text,
   }) async {
-    final normalizedContactName = _normalizeContactName(contactName);
+    final normalizedContactName = normalizeDocumentId(contactName);
 
     final updated = await _localService.updateStatistics(
       contactName: normalizedContactName,
@@ -113,19 +90,11 @@ class HybridCommunicationStatisticsRepository
       text: text,
     );
 
-    try {
-      await _cloudService.saveDocument(
-        collection: 'communicationStatistics',
-        documentId: normalizedContactName,
-        data: updated.toJson(),
-      );
-    } catch (_) {
-      await _pendingSyncService.addOperation(
-        collection: 'communicationStatistics',
-        documentId: normalizedContactName,
-        data: updated.toJson(),
-      );
-    }
+    await saveCloudDocumentWithFallback(
+      collection: 'communicationStatistics',
+      documentId: normalizedContactName,
+      data: updated.toJson(),
+    );
 
     return updated;
   }

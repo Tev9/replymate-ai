@@ -1,65 +1,38 @@
 import '../models/conversation_memory.dart';
-import '../services/cloud_storage_service.dart';
 import '../services/memory_service.dart';
-import '../services/pending_sync_service.dart';
+import 'base/hybrid_repository.dart';
 import 'memory_repository.dart';
 
-class HybridMemoryRepository implements MemoryRepository {
+class HybridMemoryRepository extends HybridRepository<ConversationMemory>
+    implements MemoryRepository {
   final MemoryService _localService;
-  final CloudStorageService _cloudService;
-  final PendingSyncService _pendingSyncService;
 
   HybridMemoryRepository({
     MemoryService? localService,
-    CloudStorageService? cloudService,
-    PendingSyncService? pendingSyncService,
-  })  : _localService = localService ?? MemoryService(),
-        _cloudService = cloudService ?? CloudStorageService(),
-        _pendingSyncService = pendingSyncService ?? PendingSyncService();
-
-  String _normalizeContactName(String contactName) {
-    return contactName.trim().toLowerCase();
-  }
+    super.cloudService,
+    super.pendingSyncService,
+  }) : _localService = localService ?? MemoryService();
 
   @override
   Future<ConversationMemory?> loadMemory(
     String contactName,
-  ) async {
-    final normalizedContactName = _normalizeContactName(contactName);
-
-    final localMemory = await _localService.loadMemory(
-      normalizedContactName,
+  ) {
+    return loadDocumentLocalFirst(
+      collection: 'conversationMemories',
+      documentId: contactName,
+      loadLocal: (documentId) => _localService.loadMemory(documentId),
+      saveLocal: (documentId, value) => _localService.saveMemory(value),
+      fromJson: ConversationMemory.fromJson,
     );
-
-    if (localMemory != null) {
-      return localMemory;
-    }
-
-    try {
-      final cloudData = await _cloudService.loadDocument(
-        collection: 'conversationMemories',
-        documentId: normalizedContactName,
-      );
-
-      if (cloudData == null) {
-        return null;
-      }
-
-      final cloudMemory = ConversationMemory.fromJson(cloudData);
-
-      await _localService.saveMemory(cloudMemory);
-
-      return cloudMemory;
-    } catch (_) {
-      return null;
-    }
   }
 
   @override
   Future<void> saveMemory(
     ConversationMemory memory,
-  ) async {
-    final normalizedContactName = _normalizeContactName(memory.contactName);
+  ) {
+    final normalizedContactName = normalizeDocumentId(
+      memory.contactName,
+    );
 
     final normalizedMemory = ConversationMemory(
       contactName: normalizedContactName,
@@ -75,20 +48,12 @@ class HybridMemoryRepository implements MemoryRepository {
       lastUpdated: memory.lastUpdated,
     );
 
-    await _localService.saveMemory(normalizedMemory);
-
-    try {
-      await _cloudService.saveDocument(
-        collection: 'conversationMemories',
-        documentId: normalizedContactName,
-        data: normalizedMemory.toJson(),
-      );
-    } catch (_) {
-      await _pendingSyncService.addOperation(
-        collection: 'conversationMemories',
-        documentId: normalizedContactName,
-        data: normalizedMemory.toJson(),
-      );
-    }
+    return saveDocumentLocalFirst(
+      collection: 'conversationMemories',
+      documentId: normalizedContactName,
+      value: normalizedMemory,
+      saveLocal: (documentId, value) => _localService.saveMemory(value),
+      toJson: (value) => value.toJson(),
+    );
   }
 }
