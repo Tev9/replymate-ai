@@ -40,6 +40,12 @@ class SyncManager {
       var successfulSyncs = 0;
 
       for (final operation in operations) {
+        final nextRetryAt = operation.nextRetryAt;
+
+        if (nextRetryAt != null && nextRetryAt.isAfter(DateTime.now())) {
+          continue;
+        }
+
         try {
           await _cloudStorageService.saveDocument(
             collection: operation.collection,
@@ -47,11 +53,15 @@ class SyncManager {
             data: operation.data,
           );
 
-          await _pendingSyncService.removeOperation(operation.id);
+          await _pendingSyncService.removeOperation(
+            operation.id,
+          );
 
           successfulSyncs++;
         } catch (_) {
-          await _pendingSyncService.increaseRetryCount(operation);
+          await _pendingSyncService.increaseRetryCount(
+            operation,
+          );
         }
       }
 

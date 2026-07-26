@@ -6,8 +6,9 @@ class PendingSyncOperation {
   final Map<String, dynamic> data;
   final DateTime createdAt;
   final int retryCount;
+  final DateTime? nextRetryAt;
 
-  const PendingSyncOperation({
+  PendingSyncOperation({
     required this.id,
     required this.userId,
     required this.collection,
@@ -15,6 +16,7 @@ class PendingSyncOperation {
     required this.data,
     required this.createdAt,
     this.retryCount = 0,
+    this.nextRetryAt,
   });
 
   PendingSyncOperation copyWith({
@@ -25,6 +27,8 @@ class PendingSyncOperation {
     Map<String, dynamic>? data,
     DateTime? createdAt,
     int? retryCount,
+    DateTime? nextRetryAt,
+    bool clearNextRetryAt = false,
   }) {
     return PendingSyncOperation(
       id: id ?? this.id,
@@ -34,6 +38,7 @@ class PendingSyncOperation {
       data: data ?? this.data,
       createdAt: createdAt ?? this.createdAt,
       retryCount: retryCount ?? this.retryCount,
+      nextRetryAt: clearNextRetryAt ? null : nextRetryAt ?? this.nextRetryAt,
     );
   }
 
@@ -46,15 +51,18 @@ class PendingSyncOperation {
       'data': data,
       'createdAt': createdAt.toIso8601String(),
       'retryCount': retryCount,
+      'nextRetryAt': nextRetryAt?.toIso8601String(),
     };
   }
 
   factory PendingSyncOperation.fromJson(
     Map<String, dynamic> json,
   ) {
+    final nextRetryAtValue = json['nextRetryAt'] as String?;
+
     return PendingSyncOperation(
       id: json['id'] as String,
-      userId: json['userId'] as String? ?? '',
+      userId: json['userId'] as String,
       collection: json['collection'] as String,
       documentId: json['documentId'] as String,
       data: Map<String, dynamic>.from(
@@ -64,6 +72,8 @@ class PendingSyncOperation {
         json['createdAt'] as String,
       ),
       retryCount: json['retryCount'] as int? ?? 0,
+      nextRetryAt:
+          nextRetryAtValue == null ? null : DateTime.parse(nextRetryAtValue),
     );
   }
 }

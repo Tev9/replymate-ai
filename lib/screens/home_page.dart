@@ -53,14 +53,10 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController contactController = TextEditingController();
   final TextEditingController writingStyleController = TextEditingController();
 
-  
-
-
-
   late final LearningManager learningManager;
   late final ReplyGenerationManager replyGenerationManager;
   late final ReplyRewriteManager replyRewriteManager;
-
+  late final FirebaseAuth firebaseAuth;
 
   @override
   void initState() {
@@ -68,11 +64,19 @@ class _HomePageState extends State<HomePage> {
 
     learningManager = serviceLocator<LearningManager>();
 
-    replyGenerationManager =
-        serviceLocator<ReplyGenerationManager>();
+    replyGenerationManager = serviceLocator<ReplyGenerationManager>();
 
-    replyRewriteManager =
-        serviceLocator<ReplyRewriteManager>();
+    replyRewriteManager = serviceLocator<ReplyRewriteManager>();
+
+    firebaseAuth = serviceLocator<FirebaseAuth>();
+  }
+
+  @override
+  void dispose() {
+    messageController.dispose();
+    contactController.dispose();
+    writingStyleController.dispose();
+    super.dispose();
   }
 
   Future<void> generateReply() async {
@@ -416,7 +420,7 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             tooltip: 'Sign out',
             onPressed: () async {
-              await FirebaseAuth.instance.signOut();
+              await firebaseAuth.signOut();
             },
             icon: const Icon(Icons.logout),
           ),

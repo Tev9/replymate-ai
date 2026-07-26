@@ -108,21 +108,25 @@ class PendingSyncService {
   Future<void> increaseRetryCount(
     PendingSyncOperation operation,
   ) async {
+    final nextRetryCount = operation.retryCount + 1;
+    final delay = _calculateRetryDelay(nextRetryCount);
+
+    final updatedOperation = operation.copyWith(
+      retryCount: nextRetryCount,
+      nextRetryAt: DateTime.now().add(delay),
+    );
+
     final operations = await loadOperations();
 
-    final operationIndex = operations.indexWhere(
-      (item) => item.id == operation.id,
-    );
+    final updatedOperations = operations.map((item) {
+      if (item.id == operation.id) {
+        return updatedOperation;
+      }
 
-    if (operationIndex == -1) {
-      return;
-    }
+      return item;
+    }).toList();
 
-    operations[operationIndex] = operation.copyWith(
-      retryCount: operation.retryCount + 1,
-    );
-
-    await _saveOperations(operations);
+    await _saveOperations(updatedOperations);
   }
 
   Future<void> clearOperations() async {
@@ -137,6 +141,20 @@ class PendingSyncService {
     final operations = await loadOperationsForUser(userId);
 
     return operations.length;
+  }
+
+  Duration _calculateRetryDelay(int retryCount) {
+    const maximumDelayMinutes = 60;
+
+    final delaySeconds = 30 * (1 << (retryCount - 1));
+    final maximumDelaySeconds =
+        const Duration(minutes: maximumDelayMinutes).inSeconds;
+
+    return Duration(
+      seconds: delaySeconds > maximumDelaySeconds
+          ? maximumDelaySeconds
+          : delaySeconds,
+    );
   }
 
   Future<void> _saveOperations(

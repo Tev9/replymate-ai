@@ -1,4 +1,5 @@
 import 'package:get_it/get_it.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/ai_service.dart';
 import '../services/memory_service.dart';
@@ -27,6 +28,10 @@ final GetIt serviceLocator = GetIt.instance;
 
 void setupServiceLocator() {
   // Core services
+  serviceLocator.registerLazySingleton<FirebaseAuth>(
+    () => FirebaseAuth.instance,
+  );
+
   serviceLocator.registerLazySingleton<AiService>(
     AiService.new,
   );
