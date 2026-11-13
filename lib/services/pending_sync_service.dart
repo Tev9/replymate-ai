@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,13 +7,34 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/pending_sync_operation.dart';
 
 class PendingSyncService {
-  final FirebaseAuth _firebaseAuth;
+  final FirebaseAuth? _firebaseAuth;
 
   PendingSyncService({
     FirebaseAuth? firebaseAuth,
-  }) : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
+  }) : _firebaseAuth = firebaseAuth;
+
+  FirebaseAuth get _auth => _firebaseAuth ?? FirebaseAuth.instance;
 
   static const String _storageKey = 'pending_sync_operations';
+
+  static Future<void> _queueLock = Future<void>.value();
+
+  Future<T> _withQueueLock<T>(
+    Future<T> Function() action,
+  ) async {
+    final previousOperation = _queueLock;
+    final releaseLock = Completer<void>();
+
+    _queueLock = releaseLock.future;
+
+    await previousOperation;
+
+    try {
+      return await action();
+    } finally {
+      releaseLock.complete();
+    }
+  }
 
   Future<List<PendingSyncOperation>> loadOperations() async {
     final preferences = await SharedPreferences.getInstance();
@@ -35,9 +57,10 @@ class PendingSyncService {
             ),
           )
           .toList();
-    } catch (_) {
-      // Prevent damaged local queue data from crashing the app.
-      return [];
+    } catch (error) {
+      throw StateError(
+        'Unable to read pending sync operations: $error',
+      );
     }
   }
 
@@ -59,94 +82,106 @@ class PendingSyncService {
     String? subcollection,
     String? subdocumentId,
     required Map<String, dynamic> data,
-  }) async {
-    final currentUser = _firebaseAuth.currentUser;
+  }) {
+    return _withQueueLock(() async {
+      final currentUser = _auth.currentUser;
 
-    if (currentUser == null) {
-      return false;
-    }
+      if (currentUser == null) {
+        return false;
+      }
 
-    final userId = currentUser.uid;
-    final operations = await loadOperations();
+      final userId = currentUser.uid;
+      final operations = await loadOperations();
 
-    operations.removeWhere(
-      (operation) =>
-          operation.userId == userId &&
-          operation.collection == collection &&
-          operation.documentId == documentId &&
-          operation.subcollection == subcollection &&
-          operation.subdocumentId == subdocumentId,
-    );
+      operations.removeWhere(
+        (operation) =>
+            operation.userId == userId &&
+            operation.collection == collection &&
+            operation.documentId == documentId &&
+            operation.subcollection == subcollection &&
+            operation.subdocumentId == subdocumentId,
+      );
 
-    final createdAt = DateTime.now();
+      final createdAt = DateTime.now();
 
-    final operationParts = [
-      userId,
-      collection,
-      documentId,
-      if (subcollection != null) subcollection,
-      if (subdocumentId != null) subdocumentId,
-      createdAt.microsecondsSinceEpoch.toString(),
-    ];
+      final operationParts = [
+        userId,
+        collection,
+        documentId,
+        if (subcollection != null) subcollection,
+        if (subdocumentId != null) subdocumentId,
+        createdAt.microsecondsSinceEpoch.toString(),
+      ];
 
-    operations.add(
-      PendingSyncOperation(
-        id: operationParts.join('_'),
-        userId: userId,
-        collection: collection,
-        documentId: documentId,
-        subcollection: subcollection,
-        subdocumentId: subdocumentId,
-        data: Map<String, dynamic>.from(data),
-        createdAt: createdAt,
-      ),
-    );
+      operations.add(
+        PendingSyncOperation(
+          id: operationParts.join('_'),
+          userId: userId,
+          collection: collection,
+          documentId: documentId,
+          subcollection: subcollection,
+          subdocumentId: subdocumentId,
+          data: Map<String, dynamic>.from(data),
+          createdAt: createdAt,
+        ),
+      );
 
-    await _saveOperations(operations);
+      await _saveOperations(operations);
 
-    return true;
+      return true;
+    });
   }
 
   Future<void> removeOperation(
     String operationId,
-  ) async {
-    final operations = await loadOperations();
+  ) {
+    return _withQueueLock(() async {
+      final operations = await loadOperations();
 
-    operations.removeWhere(
-      (operation) => operation.id == operationId,
-    );
+      operations.removeWhere(
+        (operation) => operation.id == operationId,
+      );
 
-    await _saveOperations(operations);
+      await _saveOperations(operations);
+    });
   }
 
   Future<void> increaseRetryCount(
     PendingSyncOperation operation,
-  ) async {
-    final nextRetryCount = operation.retryCount + 1;
-    final delay = _calculateRetryDelay(nextRetryCount);
+  ) {
+    return _withQueueLock(() async {
+      final operations = await loadOperations();
 
-    final updatedOperation = operation.copyWith(
-      retryCount: nextRetryCount,
-      nextRetryAt: DateTime.now().add(delay),
-    );
+      final updatedOperations = operations.map((item) {
+        if (item.id != operation.id) {
+          return item;
+        }
 
-    final operations = await loadOperations();
+        final nextRetryCount = item.retryCount + 1;
+        final delay = _calculateRetryDelay(nextRetryCount);
 
-    final updatedOperations = operations.map((item) {
-      if (item.id == operation.id) {
-        return updatedOperation;
-      }
+        return item.copyWith(
+          retryCount: nextRetryCount,
+          nextRetryAt: DateTime.now().add(delay),
+        );
+      }).toList();
 
-      return item;
-    }).toList();
-
-    await _saveOperations(updatedOperations);
+      await _saveOperations(updatedOperations);
+    });
   }
 
-  Future<void> clearOperations() async {
-    final preferences = await SharedPreferences.getInstance();
+  Future<void> clearOperations() {
+    return _withQueueLock(() async {
+      final preferences = await SharedPreferences.getInstance();
 
-    await preferences.remove(_storageKey);
+      final removed = await preferences.remove(_storageKey);
+
+      if (!removed) {
+        throw StateError(
+          'Failed to clear pending sync operations.',
+        );
+      }
+    });
   }
 
   Future<int> getPendingCount(
@@ -180,9 +215,15 @@ class PendingSyncService {
       operations.map((operation) => operation.toJson()).toList(),
     );
 
-    await preferences.setString(
+    final saved = await preferences.setString(
       _storageKey,
       encodedOperations,
     );
+
+    if (!saved) {
+      throw StateError(
+        'Failed to save pending sync operations.',
+      );
+    }
   }
 }
